@@ -8,6 +8,7 @@ export function useProgress() {
   const summary = { ...emptyProgress, ...savedSummary }
   const completedLessons = useLiveQuery(() => db.lessonProgress.toArray(), []) ?? []
   const quizAttempts = useLiveQuery(() => db.quizAttempts.toArray(), []) ?? []
+  const completedLabs = useLiveQuery(() => db.labProgress.toArray(), []) ?? []
   const modulePercent = (moduleId: string) => {
     const availableTopics = modules.find((item) => item.id === moduleId)?.lessons.filter((topic) => questionsByTopic[topic.id]?.length) ?? []
     if (!availableTopics.length) return 0
@@ -17,7 +18,21 @@ export function useProgress() {
   const isLessonComplete = (lessonId: string) => completedLessons.some((item) => item.lessonId === lessonId)
   const bestTopicScore = (topicId: string) => quizAttempts.filter((item) => item.topicId === topicId).reduce((best, item) => Math.max(best, Math.round((item.score / item.total) * 100)), 0)
   const topicAttempts = (topicId: string) => quizAttempts.filter((item) => item.topicId === topicId).length
-  return { summary, modulePercent, isLessonComplete, quizAttempts, bestTopicScore, topicAttempts }
+  const isLabComplete = (labId: string) => completedLabs.some((item) => item.labId === labId)
+  return { summary, modulePercent, isLessonComplete, quizAttempts, bestTopicScore, topicAttempts, isLabComplete, completedLabCount: completedLabs.length }
+}
+
+export async function completeLab(labId: string, domainId: string, studyMinutes: number) {
+  await db.transaction('rw', db.labProgress, db.progress, async () => {
+    if (await db.labProgress.get(labId)) return
+    const summary = { ...emptyProgress, ...(await db.progress.get('current')) }
+    const today = localDate()
+    const yesterday = new Date()
+    yesterday.setDate(yesterday.getDate() - 1)
+    const nextStreak = summary.lastStudyDate === today ? summary.streakDays : summary.lastStudyDate === localDate(yesterday) ? summary.streakDays + 1 : 1
+    await db.labProgress.add({ labId, domainId, completedAt: new Date().toISOString() })
+    await db.progress.put({ ...summary, streakDays: nextStreak, studyMinutes: summary.studyMinutes + studyMinutes, lastStudyDate: today })
+  })
 }
 
 export async function recordQuizAttempt(topicId: string, moduleId: string, score: number, total: number) {
