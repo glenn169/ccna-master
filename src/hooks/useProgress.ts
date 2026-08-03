@@ -9,6 +9,7 @@ export function useProgress() {
   const completedLessons = useLiveQuery(() => db.lessonProgress.toArray(), []) ?? []
   const quizAttempts = useLiveQuery(() => db.quizAttempts.toArray(), []) ?? []
   const completedLabs = useLiveQuery(() => db.labProgress.toArray(), []) ?? []
+  const examAttempts = useLiveQuery(() => db.examAttempts.orderBy('completedAt').reverse().toArray(), []) ?? []
   const modulePercent = (moduleId: string) => {
     const availableTopics = modules.find((item) => item.id === moduleId)?.lessons.filter((topic) => questionsByTopic[topic.id]?.length) ?? []
     if (!availableTopics.length) return 0
@@ -19,7 +20,20 @@ export function useProgress() {
   const bestTopicScore = (topicId: string) => quizAttempts.filter((item) => item.topicId === topicId).reduce((best, item) => Math.max(best, Math.round((item.score / item.total) * 100)), 0)
   const topicAttempts = (topicId: string) => quizAttempts.filter((item) => item.topicId === topicId).length
   const isLabComplete = (labId: string) => completedLabs.some((item) => item.labId === labId)
-  return { summary, modulePercent, isLessonComplete, quizAttempts, bestTopicScore, topicAttempts, isLabComplete, completedLabCount: completedLabs.length }
+  const bestExamScore = examAttempts.reduce((best, attempt) => Math.max(best, Math.round((attempt.score / attempt.total) * 100)), 0)
+  return { summary, modulePercent, isLessonComplete, quizAttempts, bestTopicScore, topicAttempts, isLabComplete, completedLabCount: completedLabs.length, examAttempts, bestExamScore }
+}
+
+export async function recordExamAttempt(questionIds: string[], selectedAnswers: Record<string, number>, score: number, durationSeconds: number) {
+  await db.transaction('rw', db.examAttempts, db.progress, async () => {
+    const summary = { ...emptyProgress, ...(await db.progress.get('current')) }
+    const today = localDate()
+    const yesterday = new Date()
+    yesterday.setDate(yesterday.getDate() - 1)
+    const nextStreak = summary.lastStudyDate === today ? summary.streakDays : summary.lastStudyDate === localDate(yesterday) ? summary.streakDays + 1 : 1
+    await db.examAttempts.add({ questionIds, selectedAnswers, score, total: questionIds.length, durationSeconds, completedAt: new Date().toISOString() })
+    await db.progress.put({ ...summary, streakDays: nextStreak, studyMinutes: summary.studyMinutes + Math.max(1, Math.ceil(durationSeconds / 60)), questionsAnswered: summary.questionsAnswered + questionIds.length, correctAnswers: summary.correctAnswers + score, lastStudyDate: today })
+  })
 }
 
 export async function completeLab(labId: string, domainId: string, studyMinutes: number) {
