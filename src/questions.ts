@@ -2,10 +2,28 @@ export type PracticeQuestion = {
   id: string
   prompt: string
   choices: string[]
-  answer: number
+  answer: number | number[]
   explanation: string
   difficulty?: 'easy' | 'medium' | 'hard'
   tags?: string[]
+}
+
+export type SelectedAnswer = number[]
+
+export function correctAnswerIndexes(question: PracticeQuestion): number[] {
+  return Array.isArray(question.answer) ? question.answer : [question.answer]
+}
+
+export function isQuestionCorrect(question: PracticeQuestion, selected: SelectedAnswer | number | undefined): boolean {
+  if (selected === undefined) return false
+  const actual = Array.isArray(selected) ? [...selected].sort((a, b) => a - b) : [selected]
+  const expected = correctAnswerIndexes(question).sort((a, b) => a - b)
+  return actual.length === expected.length && actual.every((value, index) => value === expected[index])
+}
+
+export function answerInstruction(question: PracticeQuestion): string {
+  const count = correctAnswerIndexes(question).length
+  return count === 1 ? 'Choose one answer' : `Choose ${count} answers`
 }
 
 export const questionsByTopic: Record<string, PracticeQuestion[]> = {
@@ -169,4 +187,47 @@ export const questionsByTopic: Record<string, PracticeQuestion[]> = {
   'config-management': [
     { id: 'cm-1', prompt: 'Which tool is primarily associated with declarative infrastructure provisioning?', choices: ['Terraform', 'Wireshark', 'TFTP', 'Syslog'], answer: 0, explanation: 'Terraform uses declarative configuration files to provision and manage infrastructure state.', difficulty: 'easy', tags: ['terraform', 'configuration-management'] },
   ],
+}
+
+const multipleAnswerQuestions: Record<string, PracticeQuestion[]> = {
+  'network-components': [
+    { id: 'nc-4', prompt: 'Which two devices commonly make forwarding decisions using IP addresses? (Choose two.)', choices: ['Router', 'Layer 3 switch', 'Layer 2 hub', 'Wireless repeater'], answer: [0, 1], explanation: 'Routers and multilayer switches can route packets by examining Layer 3 destination addresses.', difficulty: 'medium', tags: ['network-devices', 'routing'] },
+  ],
+  'tcp-udp': [
+    { id: 'tu-3', prompt: 'Which two features are provided by TCP? (Choose two.)', choices: ['Sequencing', 'Acknowledgements', 'Best-effort delivery without sessions', 'No retransmission'], answer: [0, 1], explanation: 'TCP uses sequence numbers and acknowledgements to provide ordered, reliable delivery.', difficulty: 'easy', tags: ['tcp', 'transport'] },
+  ],
+  vlans: [
+    { id: 'vl-3', prompt: 'Which two statements describe VLANs? (Choose two.)', choices: ['They create separate broadcast domains', 'Devices in different VLANs require Layer 3 forwarding to communicate', 'They eliminate the need for IP addressing', 'They make every switch port a trunk'], answer: [0, 1], explanation: 'Each VLAN is a distinct Layer 2 broadcast domain, and inter-VLAN communication requires routing.', difficulty: 'medium', tags: ['vlans', 'inter-vlan-routing'] },
+  ],
+  ospfv2: [
+    { id: 'os-3', prompt: 'Which two parameters must match for two OSPFv2 routers to become neighbors on the same link? (Choose two.)', choices: ['Area ID', 'Hello and dead timers', 'Process ID', 'Router hostname'], answer: [0, 1], explanation: 'Neighbors must agree on key link parameters including the area and hello/dead intervals; local process IDs and hostnames need not match.', difficulty: 'hard', tags: ['ospf', 'neighbors'] },
+  ],
+  nat: [
+    { id: 'na-3', prompt: 'Which two statements describe PAT? (Choose two.)', choices: ['It distinguishes sessions with transport-layer port numbers', 'It can map many inside hosts to one public IPv4 address', 'It requires one public address per inside host', 'It translates IPv6 routes into OSPF'], answer: [0, 1], explanation: 'PAT multiplexes many private sessions onto one or a few public addresses by tracking port numbers.', difficulty: 'medium', tags: ['nat', 'pat'] },
+  ],
+  ssh: [
+    { id: 'ss-3', prompt: 'Which two items are required before generating RSA keys for SSH on Cisco IOS? (Choose two.)', choices: ['Hostname', 'IP domain name', 'OSPF process', 'Enable password'], answer: [0, 1], explanation: 'IOS uses the configured hostname and domain name when creating the RSA key pair.', difficulty: 'medium', tags: ['ssh', 'rsa'] },
+  ],
+  acls: [
+    { id: 'ac-3', prompt: 'Which two fields can an extended IPv4 ACL evaluate? (Choose two.)', choices: ['Source and destination IP addresses', 'TCP or UDP port numbers', 'STP bridge priority', 'EtherChannel system ID only'], answer: [0, 1], explanation: 'Extended ACLs can match protocol, source/destination addresses, and transport-layer ports.', difficulty: 'medium', tags: ['acl', 'security'] },
+  ],
+  'wireless-principles': [
+    { id: 'wp-2', prompt: 'Which two factors commonly cause wireless interference? (Choose two.)', choices: ['Overlapping channels', 'Non-Wi-Fi devices using the same frequency band', 'Unique SSIDs', 'Full-duplex Ethernet uplinks'], answer: [0, 1], explanation: 'Co-channel or adjacent-channel use and other radio emitters in the same band can reduce wireless performance.', difficulty: 'medium', tags: ['wireless', 'interference'] },
+  ],
+  'layer2-security': [
+    { id: 'ls-2', prompt: 'Which two protections can use the DHCP snooping binding database? (Choose two.)', choices: ['Dynamic ARP Inspection', 'IP Source Guard', 'OSPF authentication', 'NAT overload'], answer: [0, 1], explanation: 'DAI and IP Source Guard can validate traffic using trusted IP-to-MAC-to-port bindings learned by DHCP snooping.', difficulty: 'hard', tags: ['dhcp-snooping', 'dai', 'ip-source-guard'] },
+  ],
+  'controller-networking': [
+    { id: 'cn-2', prompt: 'Which two characteristics are associated with controller-based networking? (Choose two.)', choices: ['Centralized policy intent', 'APIs for automation and integration', 'Every device must be configured only through console cables', 'The control plane can never be logically centralized'], answer: [0, 1], explanation: 'Controllers centralize policy and expose APIs, allowing consistent automation across managed infrastructure.', difficulty: 'medium', tags: ['sdn', 'controllers'] },
+  ],
+  json: [
+    { id: 'js-3', prompt: 'Which two values are valid JSON data types? (Choose two.)', choices: ['Boolean', 'Array', 'Interface', 'Command'], answer: [0, 1], explanation: 'JSON supports strings, numbers, objects, arrays, booleans and null.', difficulty: 'easy', tags: ['json', 'data-types'] },
+  ],
+  'config-management': [
+    { id: 'cm-2', prompt: 'Which two tools are associated with infrastructure automation or configuration management? (Choose two.)', choices: ['Ansible', 'Terraform', 'Syslog', 'TFTP'], answer: [0, 1], explanation: 'Ansible automates configuration workflows, while Terraform declaratively provisions infrastructure.', difficulty: 'easy', tags: ['ansible', 'terraform'] },
+  ],
+}
+
+for (const [topicId, questions] of Object.entries(multipleAnswerQuestions)) {
+  questionsByTopic[topicId] = [...(questionsByTopic[topicId] ?? []), ...questions]
 }

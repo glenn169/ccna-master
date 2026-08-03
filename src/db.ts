@@ -41,7 +41,7 @@ export interface LabProgress {
 export interface ExamAttempt {
   id?: number
   questionIds: string[]
-  selectedAnswers: Record<string, number>
+  selectedAnswers: Record<string, number | number[]>
   score: number
   total: number
   durationSeconds: number

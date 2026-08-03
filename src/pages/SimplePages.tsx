@@ -2,7 +2,7 @@ import { Activity, ArrowRight, BookOpenCheck, CheckCircle2, CircleAlert, Clock3,
 import { Link } from 'react-router-dom'
 import { modules } from '../data'
 import { labs } from '../labs'
-import { questionsByTopic } from '../questions'
+import { isQuestionCorrect, questionsByTopic } from '../questions'
 import { PageHeader } from '../components/PageHeader'
 import { formatStudyTime, useProgress } from '../hooks/useProgress'
 import type { ExamAttempt, LabProgress, QuizAttempt } from '../db'
@@ -58,7 +58,7 @@ function buildDomainStats(quizAttempts: QuizAttempt[], examAttempts: ExamAttempt
   return modules.map((module) => {
     let answered = 0; let correct = 0
     quizAttempts.filter((attempt) => attempt.moduleId === module.id).forEach((attempt) => { answered += attempt.total; correct += attempt.score })
-    examAttempts.forEach((attempt) => attempt.questionIds.forEach((questionId) => { if (questionModule.get(questionId) !== module.id) return; answered++; const question = Object.values(questionsByTopic).flat().find((item) => item.id === questionId); if (question && attempt.selectedAnswers[questionId] === question.answer) correct++ }))
+    examAttempts.forEach((attempt) => attempt.questionIds.forEach((questionId) => { if (questionModule.get(questionId) !== module.id) return; answered++; const question = Object.values(questionsByTopic).flat().find((item) => item.id === questionId); if (question && isQuestionCorrect(question, attempt.selectedAnswers[questionId])) correct++ }))
     return { id: module.id, title: module.title, answered, accuracy: answered ? Math.round((correct / answered) * 100) : 0, mastery: mastery(module.id) }
   })
 }

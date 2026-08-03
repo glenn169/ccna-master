@@ -25,7 +25,7 @@ export function useProgress() {
   return { summary, modulePercent, isLessonComplete, quizAttempts, bestTopicScore, topicAttempts, isLabComplete, completedLabs, completedLabCount: completedLabs.length, examAttempts, bestExamScore }
 }
 
-export async function recordExamAttempt(questionIds: string[], selectedAnswers: Record<string, number>, score: number, durationSeconds: number) {
+export async function recordExamAttempt(questionIds: string[], selectedAnswers: Record<string, number | number[]>, score: number, durationSeconds: number) {
   await db.transaction('rw', db.examAttempts, db.progress, async () => {
     const summary = { ...emptyProgress, ...(await db.progress.get('current')) }
     const today = localDate()
