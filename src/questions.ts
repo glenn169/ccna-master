@@ -4,6 +4,8 @@ export type PracticeQuestion = {
   choices: string[]
   answer: number
   explanation: string
+  difficulty?: 'easy' | 'medium' | 'hard'
+  tags?: string[]
 }
 
 export const questionsByTopic: Record<string, PracticeQuestion[]> = {
@@ -64,5 +66,107 @@ export const questionsByTopic: Record<string, PracticeQuestion[]> = {
   'json': [
     { id: 'js-1', prompt: 'Which characters enclose a JSON object?', choices: ['Square brackets', 'Parentheses', 'Curly braces', 'Angle brackets'], answer: 2, explanation: 'A JSON object is enclosed in curly braces and contains key-value pairs.' },
     { id: 'js-2', prompt: 'Which characters enclose a JSON array?', choices: ['Square brackets', 'Curly braces', 'Quotation marks', 'Parentheses'], answer: 0, explanation: 'A JSON array is an ordered collection enclosed in square brackets.' },
+  ],
+  'topology-architectures': [
+    { id: 'ta-1', prompt: 'Which data-center topology connects every leaf switch to every spine switch?', choices: ['Three-tier', 'SOHO', 'Spine-leaf', 'Hub-and-spoke'], answer: 2, explanation: 'In a spine-leaf design, each leaf connects to every spine, providing predictable paths and high east-west bandwidth.', difficulty: 'easy', tags: ['topology', 'spine-leaf'] },
+  ],
+  'cabling-interfaces': [
+    { id: 'ci-1', prompt: 'Which fiber type is normally preferred for the longest-distance links?', choices: ['Multimode fiber', 'Single-mode fiber', 'UTP copper', 'Coaxial cable'], answer: 1, explanation: 'Single-mode fiber uses a smaller core and laser light, supporting longer distances than multimode fiber.', difficulty: 'easy', tags: ['cabling', 'fiber'] },
+  ],
+  'interface-issues': [
+    { id: 'ii-1', prompt: 'Which symptom commonly indicates a duplex mismatch?', choices: ['Late collisions and poor throughput', 'A missing routing table', 'Duplicate IP addresses only', 'An incorrect native VLAN only'], answer: 0, explanation: 'A duplex mismatch commonly causes late collisions, interface errors and severely reduced throughput.', difficulty: 'medium', tags: ['interfaces', 'troubleshooting'] },
+  ],
+  'private-ipv4': [
+    { id: 'pi-1', prompt: 'Which IPv4 block is reserved for private addressing?', choices: ['172.16.0.0/12', '172.0.0.0/8', '192.0.2.0/24', '224.0.0.0/4'], answer: 0, explanation: 'RFC 1918 reserves 10.0.0.0/8, 172.16.0.0/12 and 192.168.0.0/16 for private use.', difficulty: 'easy', tags: ['ipv4', 'private-addressing'] },
+  ],
+  'ipv6-addressing': [
+    { id: 'ia-1', prompt: 'Which command assigns the IPv6 prefix 2001:db8:1::/64 and generates the interface ID with EUI-64?', choices: ['ipv6 address 2001:db8:1::/64 eui-64', 'ip address 2001:db8:1::/64', 'ipv6 enable eui-64 2001:db8:1::', 'ipv6 prefix 2001:db8:1::/64'], answer: 0, explanation: 'The ipv6 address prefix/prefix-length eui-64 command derives the interface ID automatically.', difficulty: 'medium', tags: ['ipv6', 'configuration'] },
+  ],
+  'ipv6-types': [
+    { id: 'it-1', prompt: 'Which prefix identifies IPv6 link-local addresses?', choices: ['2000::/3', 'FC00::/7', 'FE80::/10', 'FF00::/8'], answer: 2, explanation: 'IPv6 link-local unicast addresses use FE80::/10 and operate only on the local link.', difficulty: 'easy', tags: ['ipv6', 'address-types'] },
+  ],
+  'ip-parameters': [
+    { id: 'ip-1', prompt: 'Which Windows command displays detailed IP address, gateway and DNS information?', choices: ['show ip interface brief', 'ipconfig /all', 'ifconfig route', 'netstat /dns'], answer: 1, explanation: 'ipconfig /all displays detailed TCP/IP configuration for Windows network adapters.', difficulty: 'easy', tags: ['client-os', 'verification'] },
+  ],
+  'wireless-principles': [
+    { id: 'wp-1', prompt: 'Which three 2.4-GHz Wi-Fi channels are commonly used as nonoverlapping channels?', choices: ['1, 5 and 9', '1, 6 and 11', '2, 7 and 12', '3, 8 and 13'], answer: 1, explanation: 'Channels 1, 6 and 11 are the standard nonoverlapping 20-MHz channels in the 2.4-GHz band.', difficulty: 'easy', tags: ['wireless', 'channels'] },
+  ],
+  'virtualization': [
+    { id: 'vf-1', prompt: 'What allows multiple isolated routing tables to exist on one router?', choices: ['VLAN trunking', 'VRF', 'PoE', 'EtherChannel'], answer: 1, explanation: 'Virtual Routing and Forwarding creates separate routing instances on the same physical device.', difficulty: 'medium', tags: ['virtualization', 'vrf'] },
+  ],
+  'switching-concepts': [
+    { id: 'sc-1', prompt: 'What does a switch do with an unknown unicast frame?', choices: ['Drops it immediately', 'Routes it to the default gateway', 'Floods it within the VLAN except the incoming port', 'Sends it only to trunk ports'], answer: 2, explanation: 'When the destination MAC is unknown, the switch floods the frame out other ports in the same VLAN.', difficulty: 'medium', tags: ['switching', 'mac-table'] },
+  ],
+  'cdp-lldp': [
+    { id: 'cl-1', prompt: 'Which discovery protocol is vendor-neutral?', choices: ['CDP', 'LLDP', 'VTP', 'DTP'], answer: 1, explanation: 'LLDP is the IEEE 802.1AB vendor-neutral neighbor discovery protocol; CDP is Cisco proprietary.', difficulty: 'easy', tags: ['lldp', 'discovery'] },
+  ],
+  'etherchannel': [
+    { id: 'ec-1', prompt: 'Which LACP mode actively tries to form an EtherChannel?', choices: ['Auto', 'Desirable', 'Active', 'Passive'], answer: 2, explanation: 'LACP active initiates negotiation; passive responds. At least one side must use active.', difficulty: 'medium', tags: ['etherchannel', 'lacp'] },
+  ],
+  'rapid-pvst': [
+    { id: 'rp-1', prompt: 'Which switch becomes the STP root bridge?', choices: ['Highest bridge ID', 'Lowest bridge ID', 'Highest MAC address', 'Lowest port priority'], answer: 1, explanation: 'STP elects the switch with the lowest bridge ID, which combines priority and MAC address.', difficulty: 'medium', tags: ['stp', 'rapid-pvst'] },
+  ],
+  'wireless-architectures': [
+    { id: 'wa-1', prompt: 'In a controller-based wireless network, what protocol commonly carries AP control traffic to the WLC?', choices: ['CAPWAP', 'LACP', 'HSRP', 'SNMP'], answer: 0, explanation: 'CAPWAP provides control and data tunnels between lightweight access points and a wireless LAN controller.', difficulty: 'medium', tags: ['wireless', 'wlc', 'capwap'] },
+  ],
+  'ap-connections': [
+    { id: 'ap-1', prompt: 'A switch port connecting a lightweight AP that maps multiple WLANs to VLANs is commonly configured as what?', choices: ['Routed port', 'Trunk port', 'SPAN destination', 'Shutdown port'], answer: 1, explanation: 'An AP carrying traffic for multiple VLAN-backed WLANs commonly uses an 802.1Q trunk to the switch.', difficulty: 'medium', tags: ['wireless', 'trunk'] },
+  ],
+  'wireless-gui': [
+    { id: 'wg-1', prompt: 'Which value identifies the wireless network name presented to clients?', choices: ['BSSID table', 'SSID', 'RADIUS secret', 'RF group'], answer: 1, explanation: 'The SSID is the human-readable wireless network name configured for a WLAN.', difficulty: 'easy', tags: ['wireless', 'wlan'] },
+  ],
+  'forwarding-decision': [
+    { id: 'fd-1', prompt: 'If two routes have the same prefix length but come from different routing sources, what is compared next?', choices: ['Administrative distance', 'Destination MAC address', 'Interface bandwidth only', 'Router uptime'], answer: 0, explanation: 'After prefix length, the router prefers the route source with the lower administrative distance.', difficulty: 'medium', tags: ['routing', 'forwarding'] },
+  ],
+  'fhrp': [
+    { id: 'fh-1', prompt: 'What is the primary purpose of a first-hop redundancy protocol?', choices: ['Encrypt routing updates', 'Provide a resilient virtual default gateway', 'Replace spanning tree', 'Assign DHCP leases'], answer: 1, explanation: 'FHRPs let multiple routers present a shared virtual gateway so hosts retain connectivity after a router failure.', difficulty: 'easy', tags: ['fhrp', 'gateway'] },
+  ],
+  'ntp': [
+    { id: 'nt-1', prompt: 'Which command configures a Cisco device to synchronize with NTP server 192.0.2.10?', choices: ['clock server 192.0.2.10', 'ntp server 192.0.2.10', 'time source 192.0.2.10', 'service ntp 192.0.2.10'], answer: 1, explanation: 'The global configuration command ntp server followed by the server address configures an NTP association.', difficulty: 'easy', tags: ['ntp', 'configuration'] },
+  ],
+  'dhcp-dns': [
+    { id: 'dd-1', prompt: 'Which interface command forwards DHCP broadcasts to a server on another subnet?', choices: ['ip dhcp server', 'ip helper-address', 'service dhcp relay', 'ip forward-protocol dhcp-server'], answer: 1, explanation: 'ip helper-address converts selected UDP broadcasts, including DHCP, into unicasts sent to the configured server.', difficulty: 'medium', tags: ['dhcp', 'relay'] },
+  ],
+  'snmp-syslog': [
+    { id: 'sl-1', prompt: 'Which syslog severity number represents the most critical condition?', choices: ['0', '3', '6', '7'], answer: 0, explanation: 'Syslog severity 0 is Emergency, the most severe level; severity 7 is Debugging.', difficulty: 'medium', tags: ['syslog', 'monitoring'] },
+  ],
+  'qos': [
+    { id: 'qo-1', prompt: 'Which QoS action buffers packets during congestion instead of discarding or remarking them?', choices: ['Classification', 'Queuing', 'Policing', 'Marking'], answer: 1, explanation: 'Queuing temporarily stores packets and schedules their transmission when an interface is congested.', difficulty: 'medium', tags: ['qos', 'queuing'] },
+  ],
+  'ftp-tftp': [
+    { id: 'ft-1', prompt: 'Which statement correctly compares TFTP with FTP?', choices: ['TFTP uses TCP and authenticates users', 'TFTP uses UDP and provides no built-in authentication', 'FTP uses UDP port 69', 'Both always encrypt transferred files'], answer: 1, explanation: 'TFTP is a simple UDP-based transfer protocol without built-in authentication; FTP uses TCP and supports login.', difficulty: 'medium', tags: ['tftp', 'ftp'] },
+  ],
+  'security-concepts': [
+    { id: 'se-1', prompt: 'Which part of the CIA triad ensures information is not altered without authorization?', choices: ['Confidentiality', 'Integrity', 'Availability', 'Accounting'], answer: 1, explanation: 'Integrity protects the accuracy and trustworthiness of data against unauthorized modification.', difficulty: 'easy', tags: ['security', 'cia-triad'] },
+  ],
+  'security-program': [
+    { id: 'sp-1', prompt: 'What is the main purpose of security awareness training?', choices: ['Replace technical controls', 'Reduce human-related security risk', 'Configure routing protocols', 'Encrypt every network packet'], answer: 1, explanation: 'Awareness training helps users recognize threats and follow policy, reducing risks such as phishing and social engineering.', difficulty: 'easy', tags: ['security-program', 'awareness'] },
+  ],
+  'password-policy': [
+    { id: 'pp-1', prompt: 'Which authentication approach adds a second verification factor beyond a password?', choices: ['MFA', 'NAT', 'Syslog', 'PortFast'], answer: 0, explanation: 'Multi-factor authentication requires factors from different categories, reducing the risk of password compromise.', difficulty: 'easy', tags: ['authentication', 'mfa'] },
+  ],
+  'ipsec-vpn': [
+    { id: 'iv-1', prompt: 'Which VPN type normally creates an encrypted tunnel between two office gateways?', choices: ['Remote-access VPN', 'Site-to-site VPN', 'Clientless WLAN', 'GRE-only access point'], answer: 1, explanation: 'A site-to-site VPN securely connects entire networks through their VPN gateways.', difficulty: 'easy', tags: ['vpn', 'ipsec'] },
+  ],
+  'layer2-security': [
+    { id: 'ls-1', prompt: 'Which Layer 2 security feature builds a trusted IP-to-MAC binding database from DHCP messages?', choices: ['PortFast', 'DHCP snooping', 'Root guard', 'EtherChannel'], answer: 1, explanation: 'DHCP snooping filters rogue DHCP messages and builds bindings used by features such as Dynamic ARP Inspection.', difficulty: 'medium', tags: ['dhcp-snooping', 'layer2-security'] },
+  ],
+  'aaa': [
+    { id: 'aa-1', prompt: 'Which AAA function records what an authenticated user did?', choices: ['Authentication', 'Authorization', 'Accounting', 'Availability'], answer: 2, explanation: 'Accounting records user activity, commands, session times or resource usage for auditing.', difficulty: 'easy', tags: ['aaa', 'accounting'] },
+  ],
+  'wireless-security': [
+    { id: 'ws-1', prompt: 'Which listed wireless security protocol provides the strongest modern protection?', choices: ['WEP', 'WPA', 'WPA2', 'WPA3'], answer: 3, explanation: 'WPA3 is newer and provides stronger protections than WEP, WPA and WPA2.', difficulty: 'easy', tags: ['wireless', 'wpa3'] },
+  ],
+  'automation-impact': [
+    { id: 'au-1', prompt: 'What is a major advantage of automating repetitive network changes?', choices: ['It removes the need for validation', 'It improves consistency and reduces manual error', 'It prevents all outages', 'It eliminates configuration management'], answer: 1, explanation: 'Automation applies repeatable processes consistently, reducing configuration drift and human typing errors.', difficulty: 'easy', tags: ['automation', 'operations'] },
+  ],
+  'controller-networking': [
+    { id: 'cn-1', prompt: 'Which API direction connects a controller to network devices in the data plane?', choices: ['Northbound', 'Southbound', 'Eastbound only', 'Application-facing'], answer: 1, explanation: 'Southbound APIs connect the controller with infrastructure devices; northbound APIs expose services to applications.', difficulty: 'medium', tags: ['sdn', 'apis'] },
+  ],
+  'ai-ml': [
+    { id: 'am-1', prompt: 'Which AI approach predicts possible network failures from historical telemetry?', choices: ['Generative AI only', 'Predictive machine learning', 'Static routing', 'Packet switching'], answer: 1, explanation: 'Predictive machine-learning models identify patterns in historical data to forecast anomalies or failures.', difficulty: 'medium', tags: ['ai', 'machine-learning'] },
+  ],
+  'config-management': [
+    { id: 'cm-1', prompt: 'Which tool is primarily associated with declarative infrastructure provisioning?', choices: ['Terraform', 'Wireshark', 'TFTP', 'Syslog'], answer: 0, explanation: 'Terraform uses declarative configuration files to provision and manage infrastructure state.', difficulty: 'easy', tags: ['terraform', 'configuration-management'] },
   ],
 }
