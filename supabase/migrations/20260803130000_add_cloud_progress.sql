@@ -1,0 +1,14 @@
+create table public.profiles (user_id uuid primary key references auth.users(id) on delete cascade, display_name text check (char_length(display_name) between 1 and 80), created_at timestamptz not null default now(), updated_at timestamptz not null default now());
+create table public.progress_snapshots (user_id uuid primary key references auth.users(id) on delete cascade, data jsonb not null default '{}'::jsonb check (jsonb_typeof(data) = 'object'), updated_at timestamptz not null default now());
+alter table public.profiles enable row level security;
+alter table public.progress_snapshots enable row level security;
+create policy "Users can read own profile" on public.profiles for select to authenticated using ((select auth.uid()) = user_id);
+create policy "Users can insert own profile" on public.profiles for insert to authenticated with check ((select auth.uid()) = user_id);
+create policy "Users can update own profile" on public.profiles for update to authenticated using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
+create policy "Users can read own progress" on public.progress_snapshots for select to authenticated using ((select auth.uid()) = user_id);
+create policy "Users can insert own progress" on public.progress_snapshots for insert to authenticated with check ((select auth.uid()) = user_id);
+create policy "Users can update own progress" on public.progress_snapshots for update to authenticated using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
+grant select, insert, update on public.profiles to authenticated;
+grant select, insert, update on public.progress_snapshots to authenticated;
+revoke all on public.profiles from anon;
+revoke all on public.progress_snapshots from anon;

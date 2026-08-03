@@ -2,6 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db, emptyProgress } from '../db'
 import { modules } from '../data'
 import { questionsByTopic } from '../questions'
+import { syncCurrentUserProgress } from '../services/progressSync'
 
 export function useProgress() {
   const savedSummary = useLiveQuery(() => db.progress.get('current'), [])
@@ -34,6 +35,7 @@ export async function recordExamAttempt(questionIds: string[], selectedAnswers: 
     await db.examAttempts.add({ questionIds, selectedAnswers, score, total: questionIds.length, durationSeconds, completedAt: new Date().toISOString() })
     await db.progress.put({ ...summary, streakDays: nextStreak, studyMinutes: summary.studyMinutes + Math.max(1, Math.ceil(durationSeconds / 60)), questionsAnswered: summary.questionsAnswered + questionIds.length, correctAnswers: summary.correctAnswers + score, lastStudyDate: today })
   })
+  void syncCurrentUserProgress()
 }
 
 export async function completeLab(labId: string, domainId: string, studyMinutes: number) {
@@ -47,6 +49,7 @@ export async function completeLab(labId: string, domainId: string, studyMinutes:
     await db.labProgress.add({ labId, domainId, completedAt: new Date().toISOString() })
     await db.progress.put({ ...summary, streakDays: nextStreak, studyMinutes: summary.studyMinutes + studyMinutes, lastStudyDate: today })
   })
+  void syncCurrentUserProgress()
 }
 
 export async function recordQuizAttempt(topicId: string, moduleId: string, score: number, total: number) {
@@ -59,6 +62,7 @@ export async function recordQuizAttempt(topicId: string, moduleId: string, score
     await db.quizAttempts.add({ topicId, moduleId, score, total, completedAt: new Date().toISOString() })
     await db.progress.put({ ...summary, streakDays: nextStreak, studyMinutes: summary.studyMinutes + Math.max(1, Math.ceil(total / 2)), questionsAnswered: summary.questionsAnswered + total, correctAnswers: summary.correctAnswers + score, lastStudyDate: today })
   })
+  void syncCurrentUserProgress()
 }
 
 function localDate(date = new Date()) {
@@ -81,6 +85,7 @@ export async function completeLesson(lessonId: string, moduleId: string, totalLe
     await db.moduleProgress.put({ moduleId, completedLessons: completedInModule, totalLessons, updatedAt: now })
     await db.progress.put({ ...summary, streakDays: nextStreak, studyMinutes: summary.studyMinutes + studyMinutes, lessonsCompleted: summary.lessonsCompleted + 1, lastStudyDate: today })
   })
+  void syncCurrentUserProgress()
 }
 
 export function formatStudyTime(minutes: number) {
