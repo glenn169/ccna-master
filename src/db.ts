@@ -32,17 +32,25 @@ export interface LessonProgress {
   completedAt: string
 }
 
+export interface LabProgress {
+  labId: string
+  domainId: string
+  completedAt: string
+}
+
 class CcnaMasterDatabase extends Dexie {
   progress!: EntityTable<ProgressSummary, 'id'>
   moduleProgress!: EntityTable<ModuleProgress, 'moduleId'>
   lessonProgress!: EntityTable<LessonProgress, 'lessonId'>
   quizAttempts!: EntityTable<QuizAttempt, 'id'>
+  labProgress!: EntityTable<LabProgress, 'labId'>
 
   constructor() {
     super('ccna-master')
     this.version(1).stores({ progress: 'id', moduleProgress: 'moduleId, updatedAt' })
     this.version(2).stores({ progress: 'id', moduleProgress: 'moduleId, updatedAt', lessonProgress: 'lessonId, moduleId, completedAt' })
     this.version(3).stores({ progress: 'id', moduleProgress: 'moduleId, updatedAt', lessonProgress: 'lessonId, moduleId, completedAt', quizAttempts: '++id, topicId, moduleId, completedAt' })
+    this.version(4).stores({ progress: 'id', moduleProgress: 'moduleId, updatedAt', lessonProgress: 'lessonId, moduleId, completedAt', quizAttempts: '++id, topicId, moduleId, completedAt', labProgress: 'labId, domainId, completedAt' })
   }
 }
 
