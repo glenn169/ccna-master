@@ -1,9 +1,7 @@
-import { CheckCircle2, FlaskConical } from 'lucide-react'
+import { CheckCircle2 } from 'lucide-react'
 import { modules } from '../data'
 import { PageHeader } from '../components/PageHeader'
 import { useProgress } from '../hooks/useProgress'
-
-export function Labs() { const labs=['Build a basic IPv4 LAN','Configure VLANs and trunks','Inter-VLAN routing','Single-area OSPFv2']; return <><PageHeader eyebrow="Hands-on practice" title="Configuration labs" text="Build confidence with guided Packet Tracer labs that move from topology setup to verification and troubleshooting."/><div className="space-y-3">{labs.map((lab,i)=><article className="card flex items-center gap-4 p-5" key={lab}><span className="grid h-11 w-11 place-items-center rounded-xl bg-amber-50 font-black text-amber-700">{i+1}</span><div className="flex-1"><h2 className="font-extrabold text-navy-950">{lab}</h2><p className="mt-1 text-xs font-semibold text-slate-500">{20+i*10} min · Beginner</p></div><FlaskConical className="text-slate-400"/></article>)}</div></> }
 
 export function Progress() {
   const { modulePercent, summary } = useProgress()
