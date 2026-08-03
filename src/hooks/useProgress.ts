@@ -22,7 +22,7 @@ export function useProgress() {
   const topicAttempts = (topicId: string) => quizAttempts.filter((item) => item.topicId === topicId).length
   const isLabComplete = (labId: string) => completedLabs.some((item) => item.labId === labId)
   const bestExamScore = examAttempts.reduce((best, attempt) => Math.max(best, Math.round((attempt.score / attempt.total) * 100)), 0)
-  return { summary, modulePercent, isLessonComplete, quizAttempts, bestTopicScore, topicAttempts, isLabComplete, completedLabCount: completedLabs.length, examAttempts, bestExamScore }
+  return { summary, modulePercent, isLessonComplete, quizAttempts, bestTopicScore, topicAttempts, isLabComplete, completedLabs, completedLabCount: completedLabs.length, examAttempts, bestExamScore }
 }
 
 export async function recordExamAttempt(questionIds: string[], selectedAnswers: Record<string, number>, score: number, durationSeconds: number) {
