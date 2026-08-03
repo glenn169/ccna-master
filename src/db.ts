@@ -15,13 +15,21 @@ export interface ModuleProgress {
   updatedAt: string
 }
 
+export interface LessonProgress {
+  lessonId: string
+  moduleId: string
+  completedAt: string
+}
+
 class CcnaMasterDatabase extends Dexie {
   progress!: EntityTable<ProgressSummary, 'id'>
   moduleProgress!: EntityTable<ModuleProgress, 'moduleId'>
+  lessonProgress!: EntityTable<LessonProgress, 'lessonId'>
 
   constructor() {
     super('ccna-master')
     this.version(1).stores({ progress: 'id', moduleProgress: 'moduleId, updatedAt' })
+    this.version(2).stores({ progress: 'id', moduleProgress: 'moduleId, updatedAt', lessonProgress: 'lessonId, moduleId, completedAt' })
   }
 }
 
