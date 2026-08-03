@@ -1,17 +1,35 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, emptyProgress } from '../db'
+import { modules } from '../data'
+import { questionsByTopic } from '../questions'
 
 export function useProgress() {
-  const summary = useLiveQuery(() => db.progress.get('current'), []) ?? emptyProgress
-  const savedModules = useLiveQuery(() => db.moduleProgress.toArray(), []) ?? []
+  const savedSummary = useLiveQuery(() => db.progress.get('current'), [])
+  const summary = { ...emptyProgress, ...savedSummary }
   const completedLessons = useLiveQuery(() => db.lessonProgress.toArray(), []) ?? []
+  const quizAttempts = useLiveQuery(() => db.quizAttempts.toArray(), []) ?? []
   const modulePercent = (moduleId: string) => {
-    const saved = savedModules.find((item) => item.moduleId === moduleId)
-    if (!saved || saved.totalLessons === 0) return 0
-    return Math.round((saved.completedLessons / saved.totalLessons) * 100)
+    const availableTopics = modules.find((item) => item.id === moduleId)?.lessons.filter((topic) => questionsByTopic[topic.id]?.length) ?? []
+    if (!availableTopics.length) return 0
+    const mastered = availableTopics.filter((topic) => quizAttempts.some((attempt) => attempt.topicId === topic.id && attempt.score / attempt.total >= 0.7)).length
+    return Math.round((mastered / availableTopics.length) * 100)
   }
   const isLessonComplete = (lessonId: string) => completedLessons.some((item) => item.lessonId === lessonId)
-  return { summary, modulePercent, isLessonComplete }
+  const bestTopicScore = (topicId: string) => quizAttempts.filter((item) => item.topicId === topicId).reduce((best, item) => Math.max(best, Math.round((item.score / item.total) * 100)), 0)
+  const topicAttempts = (topicId: string) => quizAttempts.filter((item) => item.topicId === topicId).length
+  return { summary, modulePercent, isLessonComplete, quizAttempts, bestTopicScore, topicAttempts }
+}
+
+export async function recordQuizAttempt(topicId: string, moduleId: string, score: number, total: number) {
+  await db.transaction('rw', db.quizAttempts, db.progress, async () => {
+    const summary = { ...emptyProgress, ...(await db.progress.get('current')) }
+    const today = localDate()
+    const yesterdayDate = new Date()
+    yesterdayDate.setDate(yesterdayDate.getDate() - 1)
+    const nextStreak = summary.lastStudyDate === today ? summary.streakDays : summary.lastStudyDate === localDate(yesterdayDate) ? summary.streakDays + 1 : 1
+    await db.quizAttempts.add({ topicId, moduleId, score, total, completedAt: new Date().toISOString() })
+    await db.progress.put({ ...summary, streakDays: nextStreak, studyMinutes: summary.studyMinutes + Math.max(1, Math.ceil(total / 2)), questionsAnswered: summary.questionsAnswered + total, correctAnswers: summary.correctAnswers + score, lastStudyDate: today })
+  })
 }
 
 function localDate(date = new Date()) {

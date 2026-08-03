@@ -1,11 +1,11 @@
-import { BarChart3, BookOpen, FlaskConical, GraduationCap, Home, Menu, Network, X } from 'lucide-react'
+import { BarChart3, FlaskConical, GraduationCap, Home, Menu, Network, X } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useProgress } from '../hooks/useProgress'
 
 const links = [
-  { to: '/', label: 'Dashboard', icon: Home }, { to: '/learn', label: 'Learn', icon: BookOpen },
-  { to: '/labs', label: 'Labs', icon: FlaskConical }, { to: '/practice', label: 'Practice', icon: GraduationCap },
+  { to: '/', label: 'Dashboard', icon: Home }, { to: '/practice', label: 'Practice', icon: GraduationCap },
+  { to: '/labs', label: 'Labs', icon: FlaskConical },
   { to: '/progress', label: 'Progress', icon: BarChart3 },
 ]
 
