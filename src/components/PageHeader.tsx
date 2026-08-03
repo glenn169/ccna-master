@@ -1,0 +1,1 @@
+export function PageHeader({ eyebrow, title, text }: { eyebrow: string; title: string; text: string }) { return <header className="mb-7"><p className="eyebrow">{eyebrow}</p><h1 className="mt-2 text-3xl font-black tracking-tight text-navy-950 sm:text-4xl">{title}</h1><p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">{text}</p></header> }
