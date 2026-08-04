@@ -32,7 +32,12 @@ type ExamQuestion = PracticeQuestion & {
 };
 type ExamAnswers = Record<string, number[]>;
 type ExamState = "intro" | "active" | "result";
-const EXAM_SECONDS = 30 * 60;
+type ExamMode = "quick" | "full";
+type ReviewFilter = "all" | "incorrect" | "flagged" | "unanswered";
+const EXAM_CONFIG = {
+  quick: { label: "Quick Mock", questions: 20, seconds: 30 * 60 },
+  full: { label: "Full Simulation", questions: 100, seconds: 120 * 60 },
+} as const;
 const PASS_PERCENT = 70;
 
 function shuffle<T>(items: T[]) {
@@ -58,15 +63,16 @@ function questionPool() {
   );
 }
 
-function createExam() {
+function createExam(mode: ExamMode, recentQuestionIds = new Set<string>()) {
   const pool = questionPool();
+  const total = EXAM_CONFIG[mode].questions;
   return shuffle(
-    modules.flatMap((module) =>
-      shuffle(pool.filter((question) => question.moduleId === module.id)).slice(
-        0,
-        Math.round(module.weight / 5),
-      ),
-    ),
+    modules.flatMap((module) => {
+      const domainPool = pool.filter((question) => question.moduleId === module.id)
+      const fresh = shuffle(domainPool.filter((question) => !recentQuestionIds.has(question.id)))
+      const recent = shuffle(domainPool.filter((question) => recentQuestionIds.has(question.id)))
+      return [...fresh, ...recent].slice(0, Math.round((module.weight / 100) * total))
+    }),
   );
 }
 
@@ -112,7 +118,9 @@ export function Exam() {
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<ExamAnswers>({});
   const [flags, setFlags] = useState<Set<string>>(new Set());
-  const [secondsLeft, setSecondsLeft] = useState(EXAM_SECONDS);
+  const [mode, setMode] = useState<ExamMode>("quick");
+  const [secondsLeft, setSecondsLeft] = useState(EXAM_CONFIG.quick.seconds);
+  const [reviewFilter, setReviewFilter] = useState<ReviewFilter>("all");
   const [saving, setSaving] = useState(false);
   const [score, setScore] = useState(0);
   const submitted = useRef(false);
@@ -129,7 +137,8 @@ export function Exam() {
       questions.map((question) => question.id),
       answers,
       finalScore,
-      EXAM_SECONDS - secondsLeft,
+      EXAM_CONFIG[mode].seconds - secondsLeft,
+      mode,
     );
     setScore(finalScore);
     setState("result");
@@ -149,12 +158,15 @@ export function Exam() {
     return () => window.clearInterval(timer);
   });
 
-  function startExam() {
-    setQuestions(createExam());
+  function startExam(selectedMode: ExamMode = mode) {
+    const recentQuestionIds = new Set(examAttempts.slice(0, 3).flatMap((attempt) => attempt.questionIds))
+    setMode(selectedMode);
+    setQuestions(createExam(selectedMode, recentQuestionIds));
     setIndex(0);
     setAnswers({});
     setFlags(new Set());
-    setSecondsLeft(EXAM_SECONDS);
+    setSecondsLeft(EXAM_CONFIG[selectedMode].seconds);
+    setReviewFilter("all");
     setScore(0);
     submitted.current = false;
     setState("active");
@@ -169,7 +181,7 @@ export function Exam() {
           </span>
           <p className="eyebrow mt-6">CCNA exam mode</p>
           <h1 className="mt-2 text-3xl font-black sm:text-5xl">
-            20-question mock exam
+            Choose your CCNA exam mode
           </h1>
           <p className="mt-4 max-w-2xl leading-7 text-slate-300">
             Test all six domains under timed conditions. Questions follow the
@@ -177,18 +189,9 @@ export function Exam() {
             submission.
           </p>
         </header>
-        <div className="mt-6 grid gap-4 sm:grid-cols-3">
-          <Info
-            icon={<Clock3 />}
-            value="30 minutes"
-            label="Automatic submission"
-          />
-          <Info
-            icon={<ClipboardCheck />}
-            value="20 questions"
-            label="All six domains"
-          />
-          <Info icon={<Trophy />} value="70% target" label="Pass threshold" />
+        <div className="mt-6 grid gap-4 sm:grid-cols-2">
+          <ModeCard title="Quick Mock" text="A focused daily check with 20 weighted questions in 30 minutes." onClick={() => startExam("quick")} />
+          <ModeCard title="Full Simulation" text="A complete 100-question experience with a 120-minute countdown." onClick={() => startExam("full")} featured />
         </div>
         <div className="card mt-6 p-6">
           <h2 className="text-xl font-black text-navy-950">Before you begin</h2>
@@ -207,12 +210,6 @@ export function Exam() {
             </li>
           </ul>
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-            <button
-              onClick={startExam}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-cyan-400 px-6 py-3 font-black text-navy-950"
-            >
-              Start mock exam <ArrowRight size={18} />
-            </button>
             {examAttempts.length > 0 && (
               <Link
                 to="/exam/history"
@@ -252,11 +249,11 @@ export function Exam() {
           </p>
           <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
             <button
-              onClick={startExam}
+              onClick={() => startExam(mode)}
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-navy-950 px-5 py-3 text-sm font-black text-white"
             >
               <RotateCcw size={17} />
-              New exam
+              New {EXAM_CONFIG[mode].label}
             </button>
             <Link
               to="/exam/history"
@@ -268,11 +265,9 @@ export function Exam() {
           </div>
         </div>
         <DomainBreakdown questions={questions} answers={answers} />
-        <h2 className="mt-8 text-2xl font-black text-navy-950">
-          Answer review
-        </h2>
+        <div className="mt-8 flex flex-wrap items-end justify-between gap-3"><h2 className="text-2xl font-black text-navy-950">Answer review</h2><div className="flex flex-wrap gap-2">{(['all','incorrect','flagged','unanswered'] as ReviewFilter[]).map((filter) => <button key={filter} onClick={() => setReviewFilter(filter)} className={`rounded-lg px-3 py-2 text-xs font-black capitalize ${reviewFilter === filter ? 'bg-navy-950 text-white' : 'bg-slate-100 text-slate-600'}`}>{filter}</button>)}</div></div>
         <div className="mt-4 space-y-4">
-          {questions.map((question, questionIndex) => {
+          {questions.map((question, questionIndex) => ({ question, questionIndex })).filter(({question}) => reviewFilter === 'all' || (reviewFilter === 'incorrect' && !isQuestionCorrect(question, answers[question.id])) || (reviewFilter === 'flagged' && flags.has(question.id)) || (reviewFilter === 'unanswered' && answers[question.id] === undefined)).map(({question, questionIndex}) => {
             const selected = answers[question.id];
             const correct = isQuestionCorrect(question, selected);
             return (
@@ -321,7 +316,7 @@ export function Exam() {
     <section className="mx-auto max-w-6xl">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="eyebrow">Timed mock exam</p>
+          <p className="eyebrow">{EXAM_CONFIG[mode].label}</p>
           <h1 className="text-2xl font-black text-navy-950">
             Question {index + 1} of {questions.length}
           </h1>
@@ -485,6 +480,10 @@ function Info({
   );
 }
 
+function ModeCard({ title, text, onClick, featured = false }: { title: string; text: string; onClick: () => void; featured?: boolean }) {
+  return <button onClick={onClick} className={`card p-6 text-left transition hover:-translate-y-0.5 hover:shadow-lg ${featured ? 'ring-2 ring-cyan-400' : ''}`}><div className="flex items-center justify-between"><span className="grid h-11 w-11 place-items-center rounded-xl bg-cyan-50 text-cyan-700"><ClipboardCheck size={22}/></span>{featured && <span className="rounded-full bg-cyan-100 px-3 py-1 text-xs font-black text-cyan-800">Complete mode</span>}</div><h2 className="mt-5 text-xl font-black text-navy-950">{title}</h2><p className="mt-2 text-sm leading-6 text-slate-600">{text}</p><span className="mt-5 inline-flex items-center gap-2 text-sm font-black text-cyan-700">Start exam <ArrowRight size={17}/></span></button>
+}
+
 function DomainBreakdown({
   questions,
   answers,
@@ -540,12 +539,12 @@ export function ExamHistory() {
         Exam mode
       </Link>
       <header className="mt-5">
-        <p className="eyebrow">Saved locally</p>
+        <p className="eyebrow">Synchronized exam records</p>
         <h1 className="mt-1 text-3xl font-black text-navy-950">
           Mock exam history
         </h1>
         <p className="mt-2 text-slate-600">
-          Track recent results and your highest score on this device.
+          Track quick mocks and full simulations across your signed-in devices.
         </p>
       </header>
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
@@ -576,7 +575,7 @@ export function ExamHistory() {
                 </span>
                 <div className="flex-1">
                   <p className="font-black text-navy-950">
-                    {attempt.score} of {attempt.total} correct
+                    {attempt.mode === 'full' || attempt.total === 100 ? 'Full Simulation' : 'Quick Mock'} · {attempt.score} of {attempt.total} correct
                   </p>
                   <p className="mt-1 text-xs font-semibold text-slate-500">
                     {new Date(attempt.completedAt).toLocaleString()} ·{" "}

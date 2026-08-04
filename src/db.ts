@@ -45,6 +45,7 @@ export interface ExamAttempt {
   score: number
   total: number
   durationSeconds: number
+  mode?: 'quick' | 'full'
   completedAt: string
 }
 

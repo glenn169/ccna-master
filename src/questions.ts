@@ -1,3 +1,5 @@
+import { supplementalQuestions } from './supplementalQuestions'
+
 export type PracticeQuestion = {
   id: string
   prompt: string
@@ -229,5 +231,9 @@ const multipleAnswerQuestions: Record<string, PracticeQuestion[]> = {
 }
 
 for (const [topicId, questions] of Object.entries(multipleAnswerQuestions)) {
+  questionsByTopic[topicId] = [...(questionsByTopic[topicId] ?? []), ...questions]
+}
+
+for (const [topicId, questions] of Object.entries(supplementalQuestions)) {
   questionsByTopic[topicId] = [...(questionsByTopic[topicId] ?? []), ...questions]
 }
