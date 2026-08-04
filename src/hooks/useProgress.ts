@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db, emptyProgress } from '../db'
+import { db, defaultStudyPreferences, emptyProgress, type StudyPreferences } from '../db'
 import { modules } from '../data'
 import { questionsByTopic } from '../questions'
 import { syncCurrentUserProgress } from '../services/progressSync'
@@ -14,6 +14,8 @@ export function useProgress() {
   const examAttempts = useLiveQuery(() => db.examAttempts.orderBy('completedAt').reverse().toArray(), []) ?? []
   const customQuizAttempts = useLiveQuery(() => db.customQuizAttempts.orderBy('completedAt').reverse().toArray(), []) ?? []
   const questionBookmarks = useLiveQuery(() => db.questionBookmarks.toArray(), []) ?? []
+  const savedPreferences = useLiveQuery(() => db.studyPreferences.get('current'), [])
+  const studyPreferences = { ...defaultStudyPreferences, ...savedPreferences }
   const modulePercent = (moduleId: string) => {
     const availableTopics = modules.find((item) => item.id === moduleId)?.lessons.filter((topic) => questionsByTopic[topic.id]?.length) ?? []
     if (!availableTopics.length) return 0
@@ -26,7 +28,13 @@ export function useProgress() {
   const isLabComplete = (labId: string) => completedLabs.some((item) => item.labId === labId)
   const labStepIndexes = (labId: string) => labProgress.find((item) => item.labId === labId)?.completedStepIndexes ?? []
   const bestExamScore = examAttempts.reduce((best, attempt) => Math.max(best, Math.round((attempt.score / attempt.total) * 100)), 0)
-  return { summary, modulePercent, isLessonComplete, quizAttempts, bestTopicScore, topicAttempts, isLabComplete, labStepIndexes, completedLabs, completedLabCount: completedLabs.length, examAttempts, bestExamScore, customQuizAttempts, questionBookmarks }
+  return { summary, modulePercent, isLessonComplete, quizAttempts, bestTopicScore, topicAttempts, isLabComplete, labStepIndexes, completedLabs, completedLabCount: completedLabs.length, examAttempts, bestExamScore, customQuizAttempts, questionBookmarks, studyPreferences }
+}
+
+export async function saveStudyPreferences(changes: Partial<Pick<StudyPreferences, 'dailyGoalMinutes' | 'reminderEnabled' | 'reminderTime'>>) {
+  const current = { ...defaultStudyPreferences, ...(await db.studyPreferences.get('current')) }
+  await db.studyPreferences.put({ ...current, ...changes, id: 'current', updatedAt: new Date().toISOString() })
+  void syncCurrentUserProgress()
 }
 
 export async function toggleQuestionBookmark(questionId: string) {

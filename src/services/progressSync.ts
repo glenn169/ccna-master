@@ -1,6 +1,6 @@
 import type { User } from '@supabase/supabase-js'
 import { modules } from '../data'
-import { db, emptyProgress, type CustomQuizAttempt, type ExamAttempt, type LabProgress, type LessonProgress, type ModuleProgress, type ProgressSummary, type QuestionBookmark, type QuizAttempt } from '../db'
+import { db, defaultStudyPreferences, emptyProgress, type CustomQuizAttempt, type ExamAttempt, type LabProgress, type LessonProgress, type ModuleProgress, type ProgressSummary, type QuestionBookmark, type QuizAttempt, type StudyPreferences } from '../db'
 import { labs } from '../labs'
 import { supabase } from '../lib/supabase'
 
@@ -13,6 +13,7 @@ interface ProgressSnapshot {
   examAttempts: ExamAttempt[]
   customQuizAttempts: CustomQuizAttempt[]
   questionBookmarks: QuestionBookmark[]
+  studyPreferences: StudyPreferences
 }
 
 let syncPromise: Promise<void> | null = null
@@ -44,8 +45,8 @@ async function performSync(user: User) {
 }
 
 async function readLocalSnapshot(): Promise<ProgressSnapshot> {
-  const [progress, moduleProgress, lessonProgress, quizAttempts, labProgress, examAttempts, customQuizAttempts, questionBookmarks] = await Promise.all([db.progress.get('current'), db.moduleProgress.toArray(), db.lessonProgress.toArray(), db.quizAttempts.toArray(), db.labProgress.toArray(), db.examAttempts.toArray(), db.customQuizAttempts.toArray(), db.questionBookmarks.toArray()])
-  return { progress: { ...emptyProgress, ...progress }, moduleProgress, lessonProgress, quizAttempts, labProgress, examAttempts, customQuizAttempts, questionBookmarks }
+  const [progress, moduleProgress, lessonProgress, quizAttempts, labProgress, examAttempts, customQuizAttempts, questionBookmarks, studyPreferences] = await Promise.all([db.progress.get('current'), db.moduleProgress.toArray(), db.lessonProgress.toArray(), db.quizAttempts.toArray(), db.labProgress.toArray(), db.examAttempts.toArray(), db.customQuizAttempts.toArray(), db.questionBookmarks.toArray(), db.studyPreferences.get('current')])
+  return { progress: { ...emptyProgress, ...progress }, moduleProgress, lessonProgress, quizAttempts, labProgress, examAttempts, customQuizAttempts, questionBookmarks, studyPreferences: { ...defaultStudyPreferences, ...studyPreferences } }
 }
 
 function mergeSnapshots(local: ProgressSnapshot, remote: ProgressSnapshot | null): ProgressSnapshot {
@@ -56,8 +57,11 @@ function mergeSnapshots(local: ProgressSnapshot, remote: ProgressSnapshot | null
   const examAttempts = uniqueBy([...local.examAttempts, ...remote.examAttempts], item => `${item.questionIds.join(',')}|${item.score}|${item.total}|${item.durationSeconds}|${item.completedAt}`).map(withoutId)
   const customQuizAttempts = uniqueBy([...(local.customQuizAttempts ?? []), ...(remote.customQuizAttempts ?? [])], item => `${item.questionIds.join(',')}|${item.score}|${item.total}|${item.mode}|${item.completedAt}`).map(withoutId)
   const questionBookmarks = uniqueBy([...(local.questionBookmarks ?? []), ...(remote.questionBookmarks ?? [])], item => item.questionId)
+  const localPreferences = local.studyPreferences ?? defaultStudyPreferences
+  const remotePreferences = remote.studyPreferences ?? defaultStudyPreferences
+  const studyPreferences = localPreferences.updatedAt >= remotePreferences.updatedAt ? localPreferences : remotePreferences
   const moduleProgress = buildModuleProgress(lessonProgress)
-  const merged = { progress: emptyProgress, moduleProgress, lessonProgress, quizAttempts, labProgress, examAttempts, customQuizAttempts, questionBookmarks }
+  const merged = { progress: emptyProgress, moduleProgress, lessonProgress, quizAttempts, labProgress, examAttempts, customQuizAttempts, questionBookmarks, studyPreferences }
   return { ...merged, progress: calculateSummary(merged) }
 }
 
@@ -90,8 +94,8 @@ function buildModuleProgress(lessons: LessonProgress[]): ModuleProgress[] {
 }
 
 async function writeLocalSnapshot(snapshot: ProgressSnapshot) {
-  await db.transaction('rw', [db.progress, db.moduleProgress, db.lessonProgress, db.quizAttempts, db.labProgress, db.examAttempts, db.customQuizAttempts, db.questionBookmarks], async () => {
-    await Promise.all([db.progress.clear(), db.moduleProgress.clear(), db.lessonProgress.clear(), db.quizAttempts.clear(), db.labProgress.clear(), db.examAttempts.clear(), db.customQuizAttempts.clear(), db.questionBookmarks.clear()])
+  await db.transaction('rw', [db.progress, db.moduleProgress, db.lessonProgress, db.quizAttempts, db.labProgress, db.examAttempts, db.customQuizAttempts, db.questionBookmarks, db.studyPreferences], async () => {
+    await Promise.all([db.progress.clear(), db.moduleProgress.clear(), db.lessonProgress.clear(), db.quizAttempts.clear(), db.labProgress.clear(), db.examAttempts.clear(), db.customQuizAttempts.clear(), db.questionBookmarks.clear(), db.studyPreferences.clear()])
     await db.progress.put(snapshot.progress)
     if (snapshot.moduleProgress.length) await db.moduleProgress.bulkPut(snapshot.moduleProgress)
     if (snapshot.lessonProgress.length) await db.lessonProgress.bulkPut(snapshot.lessonProgress)
@@ -100,6 +104,7 @@ async function writeLocalSnapshot(snapshot: ProgressSnapshot) {
     if (snapshot.examAttempts.length) await db.examAttempts.bulkAdd(snapshot.examAttempts.map(withoutId))
     if (snapshot.customQuizAttempts?.length) await db.customQuizAttempts.bulkAdd(snapshot.customQuizAttempts.map(withoutId))
     if (snapshot.questionBookmarks?.length) await db.questionBookmarks.bulkPut(snapshot.questionBookmarks)
+    await db.studyPreferences.put(snapshot.studyPreferences ?? defaultStudyPreferences)
   })
 }
 
