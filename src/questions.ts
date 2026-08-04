@@ -1,5 +1,6 @@
 import { supplementalQuestions } from './supplementalQuestions'
 import { expandedQuestions } from './expandedQuestions'
+import { masteryQuestions } from './masteryQuestions'
 
 export type PracticeQuestion = {
   id: string
@@ -9,6 +10,7 @@ export type PracticeQuestion = {
   explanation: string
   difficulty?: 'easy' | 'medium' | 'hard'
   tags?: string[]
+  choiceOrder?: number[]
 }
 
 export type SelectedAnswer = number[]
@@ -27,6 +29,31 @@ export function isQuestionCorrect(question: PracticeQuestion, selected: Selected
 export function answerInstruction(question: PracticeQuestion): string {
   const count = correctAnswerIndexes(question).length
   return count === 1 ? 'Choose one answer' : `Choose ${count} answers`
+}
+
+export function shuffleItems<T>(items: readonly T[]): T[] {
+  const result = [...items]
+  for (let index = result.length - 1; index > 0; index--) {
+    const swap = Math.floor(Math.random() * (index + 1))
+    ;[result[index], result[swap]] = [result[swap], result[index]]
+  }
+  return result
+}
+
+export function randomizeQuestion<T extends PracticeQuestion>(question: T): T {
+  const order = shuffleItems(question.choices.map((_, index) => index))
+  const correct = new Set(correctAnswerIndexes(question))
+  const choices = order.map((index) => question.choices[index])
+  const indexes = order.flatMap((originalIndex, displayIndex) => correct.has(originalIndex) ? [displayIndex] : [])
+  return { ...question, choices, answer: indexes.length === 1 ? indexes[0] : indexes, choiceOrder: order }
+}
+
+export function canonicalAnswerIndexes(question: PracticeQuestion, selected: number[] | undefined): number[] {
+  return (selected ?? []).map((index) => question.choiceOrder?.[index] ?? index).sort((a, b) => a - b)
+}
+
+export function randomizeQuestions(questions: readonly PracticeQuestion[]): PracticeQuestion[] {
+  return shuffleItems(questions).map(randomizeQuestion)
 }
 
 export const questionsByTopic: Record<string, PracticeQuestion[]> = {
@@ -239,5 +266,8 @@ for (const [topicId, questions] of Object.entries(supplementalQuestions)) {
   questionsByTopic[topicId] = [...(questionsByTopic[topicId] ?? []), ...questions]
 }
 for (const [topicId, questions] of Object.entries(expandedQuestions)) {
+  questionsByTopic[topicId] = [...(questionsByTopic[topicId] ?? []), ...questions]
+}
+for (const [topicId, questions] of Object.entries(masteryQuestions)) {
   questionsByTopic[topicId] = [...(questionsByTopic[topicId] ?? []), ...questions]
 }

@@ -18,9 +18,12 @@ import { modules } from "../data";
 import { recordExamAttempt, useProgress } from "../hooks/useProgress";
 import {
   answerInstruction,
+  canonicalAnswerIndexes,
   correctAnswerIndexes,
   isQuestionCorrect,
   questionsByTopic,
+  randomizeQuestion,
+  shuffleItems,
   type PracticeQuestion,
 } from "../questions";
 
@@ -40,15 +43,6 @@ const EXAM_CONFIG = {
 } as const;
 const PASS_PERCENT = 70;
 
-function shuffle<T>(items: T[]) {
-  const result = [...items];
-  for (let index = result.length - 1; index > 0; index--) {
-    const swap = Math.floor(Math.random() * (index + 1));
-    [result[index], result[swap]] = [result[swap], result[index]];
-  }
-  return result;
-}
-
 function questionPool() {
   return modules.flatMap((module) =>
     module.lessons.flatMap((topic) =>
@@ -66,14 +60,14 @@ function questionPool() {
 function createExam(mode: ExamMode, recentQuestionIds = new Set<string>()) {
   const pool = questionPool();
   const total = EXAM_CONFIG[mode].questions;
-  return shuffle(
+  return shuffleItems(
     modules.flatMap((module) => {
       const domainPool = pool.filter((question) => question.moduleId === module.id)
-      const fresh = shuffle(domainPool.filter((question) => !recentQuestionIds.has(question.id)))
-      const recent = shuffle(domainPool.filter((question) => recentQuestionIds.has(question.id)))
+      const fresh = shuffleItems(domainPool.filter((question) => !recentQuestionIds.has(question.id)))
+      const recent = shuffleItems(domainPool.filter((question) => recentQuestionIds.has(question.id)))
       return [...fresh, ...recent].slice(0, Math.round((module.weight / 100) * total))
     }),
-  );
+  ).map(randomizeQuestion);
 }
 
 function formatTimer(seconds: number) {
@@ -135,7 +129,7 @@ export function Exam() {
     ).length;
     await recordExamAttempt(
       questions.map((question) => question.id),
-      answers,
+      Object.fromEntries(questions.map((question) => [question.id, canonicalAnswerIndexes(question, answers[question.id])])),
       finalScore,
       EXAM_CONFIG[mode].seconds - secondsLeft,
       mode,

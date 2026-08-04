@@ -1,10 +1,10 @@
 import { ArrowLeft, ArrowRight, CheckCircle2, CircleHelp, RotateCcw, Trophy, XCircle } from 'lucide-react'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, Navigate, useParams } from 'react-router-dom'
 import { findLesson, findModule, modules } from '../data'
 import { recordQuizAttempt, useProgress } from '../hooks/useProgress'
 import { PageHeader } from '../components/PageHeader'
-import { answerInstruction, correctAnswerIndexes, isQuestionCorrect, questionsByTopic } from '../questions'
+import { answerInstruction, correctAnswerIndexes, isQuestionCorrect, questionsByTopic, randomizeQuestions } from '../questions'
 
 export function Practice() {
   const { modulePercent } = useProgress()
@@ -23,7 +23,11 @@ export function QuizPage() {
   const { moduleId, topicId } = useParams()
   const module = findModule(moduleId)
   const topic = findLesson(moduleId, topicId)
-  const questions = topicId ? questionsByTopic[topicId] ?? [] : []
+  const [attempt, setAttempt] = useState(0)
+  const questions = useMemo(() => {
+    void attempt
+    return randomizeQuestions(topicId ? questionsByTopic[topicId] ?? [] : [])
+  }, [topicId, attempt])
   const [index, setIndex] = useState(0)
   const [selected, setSelected] = useState<number[]>([])
   const [score, setScore] = useState(0)
@@ -42,7 +46,7 @@ export function QuizPage() {
     if (index === questions.length - 1) { setSaving(true); await recordQuizAttempt(activeTopicId, activeModuleId, nextScore, questions.length); setScore(nextScore); setFinished(true); setSaving(false); return }
     setScore(nextScore); setIndex(index + 1); setSelected([])
   }
-  function restart() { setIndex(0); setSelected([]); setScore(0); setFinished(false) }
+  function restart() { setAttempt((value) => value + 1); setIndex(0); setSelected([]); setScore(0); setFinished(false) }
   function toggleAnswer(choiceIndex: number) {
     if (answered) return
     if (requiredAnswers === 1) { setSelected([choiceIndex]); return }
