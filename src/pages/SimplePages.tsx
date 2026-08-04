@@ -73,7 +73,7 @@ function buildRecommendations(attempts: QuizAttempt[]) {
 function buildRecentActivity(quizzes: QuizAttempt[], completedLabs: LabProgress[], exams: ExamAttempt[]) {
   return [
     ...quizzes.map((item) => { const topic = modules.flatMap((module) => module.lessons).find((candidate) => candidate.id === item.topicId); return { key: `quiz-${item.id}-${item.completedAt}`, date: item.completedAt, title: topic?.title ?? 'Topic practice', detail: `Quiz · ${Math.round((item.score / item.total) * 100)}%`, icon: <BookOpenCheck size={18}/> } }),
-    ...completedLabs.map((item) => ({ key: `lab-${item.labId}`, date: item.completedAt, title: labs.find((lab) => lab.id === item.labId)?.title ?? 'Packet Tracer lab', detail: 'Lab completed', icon: <CheckCircle2 size={18}/> })),
+    ...completedLabs.flatMap((item) => item.completedAt ? [{ key: `lab-${item.labId}`, date: item.completedAt, title: labs.find((lab) => lab.id === item.labId)?.title ?? 'Packet Tracer lab', detail: 'Lab completed', icon: <CheckCircle2 size={18}/> }] : []),
     ...exams.map((item) => ({ key: `exam-${item.id}-${item.completedAt}`, date: item.completedAt, title: '20-question mock exam', detail: `Exam · ${Math.round((item.score / item.total) * 100)}%`, icon: <Trophy size={18}/> })),
   ].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 6)
 }

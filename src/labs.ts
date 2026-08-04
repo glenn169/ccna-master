@@ -4,15 +4,19 @@ export type Lab = {
   objective: string
   title: string
   summary: string
-  difficulty: 'Beginner' | 'Intermediate'
+  difficulty: 'Beginner' | 'Intermediate' | 'Exam Challenge'
   minutes: number
   devices: string[]
   goals: string[]
   steps: { title: string; instructions: string[]; commands?: string[] }[]
   verify: string[]
+  prerequisites?: string[]
+  troubleshooting?: string[]
 }
 
-export const labs: Lab[] = [
+import { supplementalLabs } from './supplementalLabs'
+
+const coreLabs: Lab[] = [
   {
     id: 'basic-ipv4-lan', domainId: 'network-fundamentals', objective: '1.6', title: 'Build a Basic IPv4 LAN',
     summary: 'Connect two PCs through a switch, assign IPv4 addresses, and verify end-to-end reachability.', difficulty: 'Beginner', minutes: 20,
@@ -110,5 +114,7 @@ export const labs: Lab[] = [
     verify: ['show access-lists displays match counters.', 'The denied host cannot reach the destination LAN.', 'Other permitted hosts retain connectivity.'],
   },
 ]
+
+export const labs: Lab[] = [...coreLabs, ...supplementalLabs]
 
 export function findLab(labId?: string) { return labs.find((lab) => lab.id === labId) }

@@ -9,7 +9,8 @@ export function useProgress() {
   const summary = { ...emptyProgress, ...savedSummary }
   const completedLessons = useLiveQuery(() => db.lessonProgress.toArray(), []) ?? []
   const quizAttempts = useLiveQuery(() => db.quizAttempts.toArray(), []) ?? []
-  const completedLabs = useLiveQuery(() => db.labProgress.toArray(), []) ?? []
+  const labProgress = useLiveQuery(() => db.labProgress.toArray(), []) ?? []
+  const completedLabs = labProgress.filter((item) => Boolean(item.completedAt))
   const examAttempts = useLiveQuery(() => db.examAttempts.orderBy('completedAt').reverse().toArray(), []) ?? []
   const customQuizAttempts = useLiveQuery(() => db.customQuizAttempts.orderBy('completedAt').reverse().toArray(), []) ?? []
   const questionBookmarks = useLiveQuery(() => db.questionBookmarks.toArray(), []) ?? []
@@ -23,8 +24,9 @@ export function useProgress() {
   const bestTopicScore = (topicId: string) => quizAttempts.filter((item) => item.topicId === topicId).reduce((best, item) => Math.max(best, Math.round((item.score / item.total) * 100)), 0)
   const topicAttempts = (topicId: string) => quizAttempts.filter((item) => item.topicId === topicId).length
   const isLabComplete = (labId: string) => completedLabs.some((item) => item.labId === labId)
+  const labStepIndexes = (labId: string) => labProgress.find((item) => item.labId === labId)?.completedStepIndexes ?? []
   const bestExamScore = examAttempts.reduce((best, attempt) => Math.max(best, Math.round((attempt.score / attempt.total) * 100)), 0)
-  return { summary, modulePercent, isLessonComplete, quizAttempts, bestTopicScore, topicAttempts, isLabComplete, completedLabs, completedLabCount: completedLabs.length, examAttempts, bestExamScore, customQuizAttempts, questionBookmarks }
+  return { summary, modulePercent, isLessonComplete, quizAttempts, bestTopicScore, topicAttempts, isLabComplete, labStepIndexes, completedLabs, completedLabCount: completedLabs.length, examAttempts, bestExamScore, customQuizAttempts, questionBookmarks }
 }
 
 export async function toggleQuestionBookmark(questionId: string) {
@@ -61,15 +63,24 @@ export async function recordExamAttempt(questionIds: string[], selectedAnswers: 
 
 export async function completeLab(labId: string, domainId: string, studyMinutes: number) {
   await db.transaction('rw', db.labProgress, db.progress, async () => {
-    if (await db.labProgress.get(labId)) return
+    const existing = await db.labProgress.get(labId)
+    if (existing?.completedAt) return
     const summary = { ...emptyProgress, ...(await db.progress.get('current')) }
     const today = localDate()
     const yesterday = new Date()
     yesterday.setDate(yesterday.getDate() - 1)
     const nextStreak = summary.lastStudyDate === today ? summary.streakDays : summary.lastStudyDate === localDate(yesterday) ? summary.streakDays + 1 : 1
-    await db.labProgress.add({ labId, domainId, completedAt: new Date().toISOString() })
+    const now = new Date().toISOString()
+    await db.labProgress.put({ ...existing, labId, domainId, completedAt: now, updatedAt: now })
     await db.progress.put({ ...summary, streakDays: nextStreak, studyMinutes: summary.studyMinutes + studyMinutes, lastStudyDate: today })
   })
+  void syncCurrentUserProgress()
+}
+
+export async function saveLabSteps(labId: string, domainId: string, completedStepIndexes: number[]) {
+  const existing = await db.labProgress.get(labId)
+  const now = new Date().toISOString()
+  await db.labProgress.put({ ...existing, labId, domainId, completedAt: existing?.completedAt ?? null, completedStepIndexes: [...new Set(completedStepIndexes)].sort((a, b) => a - b), updatedAt: now })
   void syncCurrentUserProgress()
 }
 

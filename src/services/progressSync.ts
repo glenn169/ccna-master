@@ -51,7 +51,7 @@ async function readLocalSnapshot(): Promise<ProgressSnapshot> {
 function mergeSnapshots(local: ProgressSnapshot, remote: ProgressSnapshot | null): ProgressSnapshot {
   if (!remote) return { ...local, progress: calculateSummary(local) }
   const lessonProgress = uniqueBy([...local.lessonProgress, ...remote.lessonProgress], item => item.lessonId)
-  const labProgress = uniqueBy([...local.labProgress, ...remote.labProgress], item => item.labId)
+  const labProgress = mergeLabProgress(local.labProgress, remote.labProgress)
   const quizAttempts = uniqueBy([...local.quizAttempts, ...remote.quizAttempts], item => `${item.topicId}|${item.moduleId}|${item.score}|${item.total}|${item.completedAt}`).map(withoutId)
   const examAttempts = uniqueBy([...local.examAttempts, ...remote.examAttempts], item => `${item.questionIds.join(',')}|${item.score}|${item.total}|${item.durationSeconds}|${item.completedAt}`).map(withoutId)
   const customQuizAttempts = uniqueBy([...(local.customQuizAttempts ?? []), ...(remote.customQuizAttempts ?? [])], item => `${item.questionIds.join(',')}|${item.score}|${item.total}|${item.mode}|${item.completedAt}`).map(withoutId)
@@ -62,12 +62,12 @@ function mergeSnapshots(local: ProgressSnapshot, remote: ProgressSnapshot | null
 }
 
 function calculateSummary(snapshot: Omit<ProgressSnapshot, 'progress'> | ProgressSnapshot): ProgressSummary {
-  const activityDates = [...snapshot.lessonProgress.map(item => item.completedAt), ...snapshot.quizAttempts.map(item => item.completedAt), ...snapshot.labProgress.map(item => item.completedAt), ...snapshot.examAttempts.map(item => item.completedAt), ...(snapshot.customQuizAttempts ?? []).map(item => item.completedAt)].map(value => value.slice(0, 10)).sort()
+  const activityDates = [...snapshot.lessonProgress.map(item => item.completedAt), ...snapshot.quizAttempts.map(item => item.completedAt), ...snapshot.labProgress.flatMap(item => item.completedAt ? [item.completedAt] : []), ...snapshot.examAttempts.map(item => item.completedAt), ...(snapshot.customQuizAttempts ?? []).map(item => item.completedAt)].map(value => value.slice(0, 10)).sort()
   const uniqueDates = [...new Set(activityDates)]
   const quizMinutes = snapshot.quizAttempts.reduce((sum, item) => sum + Math.max(1, Math.ceil(item.total / 2)), 0)
   const examMinutes = snapshot.examAttempts.reduce((sum, item) => sum + Math.max(1, Math.ceil(item.durationSeconds / 60)), 0)
   const customMinutes = (snapshot.customQuizAttempts ?? []).reduce((sum, item) => sum + Math.max(1, Math.ceil(item.total / 2)), 0)
-  const labMinutes = snapshot.labProgress.reduce((sum, item) => sum + (labs.find(lab => lab.id === item.labId)?.minutes ?? 0), 0)
+  const labMinutes = snapshot.labProgress.reduce((sum, item) => sum + (item.completedAt ? (labs.find(lab => lab.id === item.labId)?.minutes ?? 0) : 0), 0)
   const allLessons = modules.flatMap(module => module.lessons)
   const lessonMinutes = snapshot.lessonProgress.reduce((sum, item) => sum + (allLessons.find(lesson => lesson.id === item.lessonId)?.duration ?? 0), 0)
   return { id: 'current', streakDays: calculateStreak(uniqueDates), studyMinutes: quizMinutes + examMinutes + customMinutes + labMinutes + lessonMinutes, lessonsCompleted: snapshot.lessonProgress.length, lastStudyDate: uniqueDates[uniqueDates.length - 1] ?? null, questionsAnswered: snapshot.quizAttempts.reduce((sum, item) => sum + item.total, 0) + snapshot.examAttempts.reduce((sum, item) => sum + item.total, 0) + (snapshot.customQuizAttempts ?? []).reduce((sum, item) => sum + item.total, 0), correctAnswers: snapshot.quizAttempts.reduce((sum, item) => sum + item.score, 0) + snapshot.examAttempts.reduce((sum, item) => sum + item.score, 0) + (snapshot.customQuizAttempts ?? []).reduce((sum, item) => sum + item.score, 0) }
@@ -104,5 +104,14 @@ async function writeLocalSnapshot(snapshot: ProgressSnapshot) {
 }
 
 function uniqueBy<T>(items: T[], key: (item: T) => string) { return [...new Map(items.map(item => [key(item), item])).values()] }
+function mergeLabProgress(local: LabProgress[], remote: LabProgress[]): LabProgress[] {
+  const ids = [...new Set([...local, ...remote].map(item => item.labId))]
+  return ids.map((labId) => {
+    const items = [...local, ...remote].filter(item => item.labId === labId)
+    const newest = [...items].sort((a, b) => (b.updatedAt ?? b.completedAt ?? '').localeCompare(a.updatedAt ?? a.completedAt ?? ''))[0]
+    const completedAt = items.flatMap(item => item.completedAt ? [item.completedAt] : []).sort()[0] ?? null
+    return { ...newest, completedAt, completedStepIndexes: [...new Set(items.flatMap(item => item.completedStepIndexes ?? []))].sort((a, b) => a - b) }
+  })
+}
 function withoutId<T extends { id?: number }>(item: T): Omit<T, 'id'> { const { id: _id, ...rest } = item; void _id; return rest }
 function isSnapshot(value: unknown): value is ProgressSnapshot { if (!value || typeof value !== 'object') return false; const item = value as Partial<ProgressSnapshot>; return Array.isArray(item.quizAttempts) && Array.isArray(item.labProgress) && Array.isArray(item.examAttempts) && Array.isArray(item.lessonProgress) }

@@ -35,7 +35,9 @@ export interface LessonProgress {
 export interface LabProgress {
   labId: string
   domainId: string
-  completedAt: string
+  completedAt: string | null
+  completedStepIndexes?: number[]
+  updatedAt?: string
 }
 
 export interface ExamAttempt {
