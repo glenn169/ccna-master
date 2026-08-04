@@ -63,14 +63,14 @@ export async function recordCustomQuizAttempt(questionIds: string[], selectedAns
   void syncCurrentUserProgress()
 }
 
-export async function recordExamAttempt(questionIds: string[], selectedAnswers: Record<string, number | number[]>, score: number, durationSeconds: number, mode: 'quick' | 'full' = 'quick') {
+export async function recordExamAttempt(questionIds: string[], selectedAnswers: Record<string, number | number[]>, score: number, durationSeconds: number, mode: 'quick' | 'full' = 'quick', formId?: 'A' | 'B' | 'C') {
   await db.transaction('rw', db.examAttempts, db.progress, async () => {
     const summary = { ...emptyProgress, ...(await db.progress.get('current')) }
     const today = localDate()
     const yesterday = new Date()
     yesterday.setDate(yesterday.getDate() - 1)
     const nextStreak = summary.lastStudyDate === today ? summary.streakDays : summary.lastStudyDate === localDate(yesterday) ? summary.streakDays + 1 : 1
-    await db.examAttempts.add({ questionIds, selectedAnswers, score, total: questionIds.length, durationSeconds, mode, completedAt: new Date().toISOString() })
+    await db.examAttempts.add({ questionIds, selectedAnswers, score, total: questionIds.length, durationSeconds, mode, formId, completedAt: new Date().toISOString() })
     await db.progress.put({ ...summary, streakDays: nextStreak, studyMinutes: summary.studyMinutes + Math.max(1, Math.ceil(durationSeconds / 60)), questionsAnswered: summary.questionsAnswered + questionIds.length, correctAnswers: summary.correctAnswers + score, lastStudyDate: today })
   })
   void syncCurrentUserProgress()

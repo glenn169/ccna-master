@@ -48,6 +48,7 @@ export interface ExamAttempt {
   total: number
   durationSeconds: number
   mode?: 'quick' | 'full'
+  formId?: 'A' | 'B' | 'C'
   completedAt: string
 }
 

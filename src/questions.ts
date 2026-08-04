@@ -14,6 +14,8 @@ export type PracticeQuestion = {
   difficulty?: 'easy' | 'medium' | 'hard'
   tags?: string[]
   choiceOrder?: number[]
+  choiceExplanations?: string[]
+  references?: Array<{ title: string; url: string }>
 }
 
 export type SelectedAnswer = number[]
@@ -47,8 +49,11 @@ export function randomizeQuestion<T extends PracticeQuestion>(question: T): T {
   const order = shuffleItems(question.choices.map((_, index) => index))
   const correct = new Set(correctAnswerIndexes(question))
   const choices = order.map((index) => question.choices[index])
+  const choiceExplanations = question.choiceExplanations
+    ? order.map((index) => question.choiceExplanations?.[index] ?? '')
+    : undefined
   const indexes = order.flatMap((originalIndex, displayIndex) => correct.has(originalIndex) ? [displayIndex] : [])
-  return { ...question, choices, answer: indexes.length === 1 ? indexes[0] : indexes, choiceOrder: order }
+  return { ...question, choices, choiceExplanations, answer: indexes.length === 1 ? indexes[0] : indexes, choiceOrder: order }
 }
 
 export function canonicalAnswerIndexes(question: PracticeQuestion, selected: number[] | undefined): number[] {
@@ -281,5 +286,18 @@ for (const [topicId, questions] of Object.entries(balancedDomainQuestions)) {
   questionsByTopic[topicId] = [...(questionsByTopic[topicId] ?? []), ...questions]
 }
 for (const [topicId, questions] of Object.entries(layer2ScenarioQuestions)) {
-  questionsByTopic[topicId] = [...(questionsByTopic[topicId] ?? []), ...questions]
+  const references = topicId === 'etherchannel'
+    ? [
+        { title: 'Cisco EtherChannel technology and protocols', url: 'https://www.cisco.com/c/en/us/tech/lan-switching/etherchannel/index.html' },
+        { title: 'Cisco EtherChannel load balancing and redundancy', url: 'https://www.cisco.com/c/en/us/support/docs/lan-switching/etherchannel/12023-4.html' },
+      ]
+    : [
+        { title: 'Cisco Rapid Spanning Tree Protocol (802.1w)', url: 'https://www.cisco.com/c/en/us/support/docs/lan-switching/spanning-tree-protocol/24062-146.html' },
+        { title: 'Cisco PortFast and BPDU Guard', url: 'https://www.cisco.com/c/en/us/support/docs/lan-switching/spanning-tree-protocol/10586-65.html' },
+        { title: 'Cisco STP Loop Guard', url: 'https://www.cisco.com/c/en/us/support/docs/lan-switching/spanning-tree-protocol-stp-8021d/218321-configure-stp-with-loop-guard-and-bpdu-s.html' },
+      ]
+  questionsByTopic[topicId] = [
+    ...(questionsByTopic[topicId] ?? []),
+    ...questions.map((question) => ({ ...question, references })),
+  ]
 }

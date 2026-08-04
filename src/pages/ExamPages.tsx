@@ -15,6 +15,7 @@ import {
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { modules } from "../data";
+import { calculateExamReadiness } from "../examReadiness";
 import { recordExamAttempt, useProgress } from "../hooks/useProgress";
 import {
   answerInstruction,
@@ -36,6 +37,7 @@ type ExamQuestion = PracticeQuestion & {
 type ExamAnswers = Record<string, number[]>;
 type ExamState = "intro" | "active" | "result";
 type ExamMode = "quick" | "full";
+type ExamForm = "A" | "B" | "C";
 type ReviewFilter = "all" | "incorrect" | "flagged" | "unanswered";
 const EXAM_CONFIG = {
   quick: { label: "Quick Mock", questions: 20, seconds: 30 * 60 },
@@ -57,17 +59,51 @@ function questionPool() {
   );
 }
 
-function createExam(mode: ExamMode, recentQuestionIds = new Set<string>()) {
+function seededRandom(seedText: string) {
+  let seed = [...seedText].reduce((value, character) => Math.imul(value ^ character.charCodeAt(0), 16777619), 2166136261) >>> 0;
+  return () => {
+    seed += 0x6d2b79f5;
+    let value = seed;
+    value = Math.imul(value ^ (value >>> 15), value | 1);
+    value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+    return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function seededShuffle<T>(items: readonly T[], random: () => number) {
+  const result = [...items];
+  for (let index = result.length - 1; index > 0; index--) {
+    const swap = Math.floor(random() * (index + 1));
+    [result[index], result[swap]] = [result[swap], result[index]];
+  }
+  return result;
+}
+
+function randomizeSeeded<T extends PracticeQuestion>(question: T, random: () => number): T {
+  const order = seededShuffle(question.choices.map((_, index) => index), random);
+  const correct = new Set(correctAnswerIndexes(question));
+  const indexes = order.flatMap((originalIndex, displayIndex) => correct.has(originalIndex) ? [displayIndex] : []);
+  return {
+    ...question,
+    choices: order.map((choiceIndex) => question.choices[choiceIndex]),
+    choiceExplanations: question.choiceExplanations?.length ? order.map((choiceIndex) => question.choiceExplanations?.[choiceIndex] ?? '') : undefined,
+    answer: indexes.length === 1 ? indexes[0] : indexes,
+    choiceOrder: order,
+  };
+}
+
+function createExam(mode: ExamMode, recentQuestionIds = new Set<string>(), formId?: ExamForm) {
   const pool = questionPool();
   const total = EXAM_CONFIG[mode].questions;
-  return shuffleItems(
-    modules.flatMap((module) => {
+  const random = formId ? seededRandom(`ccna-master-form-${formId}-v1`) : Math.random;
+  const selected = modules.flatMap((module) => {
       const domainPool = pool.filter((question) => question.moduleId === module.id)
-      const fresh = shuffleItems(domainPool.filter((question) => !recentQuestionIds.has(question.id)))
-      const recent = shuffleItems(domainPool.filter((question) => recentQuestionIds.has(question.id)))
+      const fresh = formId ? seededShuffle(domainPool, random) : shuffleItems(domainPool.filter((question) => !recentQuestionIds.has(question.id)))
+      const recent = formId ? [] : shuffleItems(domainPool.filter((question) => recentQuestionIds.has(question.id)))
       return [...fresh, ...recent].slice(0, Math.round((module.weight / 100) * total))
-    }),
-  ).map(randomizeQuestion);
+    });
+  const ordered = formId ? seededShuffle(selected, random) : shuffleItems(selected);
+  return ordered.map((question) => formId ? randomizeSeeded(question, random) : randomizeQuestion(question));
 }
 
 function formatTimer(seconds: number) {
@@ -113,6 +149,7 @@ export function Exam() {
   const [answers, setAnswers] = useState<ExamAnswers>({});
   const [flags, setFlags] = useState<Set<string>>(new Set());
   const [mode, setMode] = useState<ExamMode>("quick");
+  const [formId, setFormId] = useState<ExamForm | undefined>();
   const [secondsLeft, setSecondsLeft] = useState(EXAM_CONFIG.quick.seconds);
   const [reviewFilter, setReviewFilter] = useState<ReviewFilter>("all");
   const [saving, setSaving] = useState(false);
@@ -133,6 +170,7 @@ export function Exam() {
       finalScore,
       EXAM_CONFIG[mode].seconds - secondsLeft,
       mode,
+      formId,
     );
     setScore(finalScore);
     setState("result");
@@ -152,10 +190,11 @@ export function Exam() {
     return () => window.clearInterval(timer);
   });
 
-  function startExam(selectedMode: ExamMode = mode) {
+  function startExam(selectedMode: ExamMode = mode, selectedForm?: ExamForm) {
     const recentQuestionIds = new Set(examAttempts.slice(0, 3).flatMap((attempt) => attempt.questionIds))
     setMode(selectedMode);
-    setQuestions(createExam(selectedMode, recentQuestionIds));
+    setFormId(selectedForm);
+    setQuestions(createExam(selectedMode, recentQuestionIds, selectedForm));
     setIndex(0);
     setAnswers({});
     setFlags(new Set());
@@ -185,7 +224,14 @@ export function Exam() {
         </header>
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
           <ModeCard title="Quick Mock" text="A focused daily check with 20 weighted questions in 30 minutes." onClick={() => startExam("quick")} />
-          <ModeCard title="Full Simulation" text="A complete 100-question experience with a 120-minute countdown." onClick={() => startExam("full")} featured />
+          <ModeCard title="Full Simulation" text="A fresh weighted 100-question experience with a 120-minute countdown." onClick={() => startExam("full")} featured />
+        </div>
+        <div className="card mt-6 p-6">
+          <h2 className="text-xl font-black text-navy-950">Fixed unseen exam forms</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-600">Forms A, B and C contain stable blueprint-weighted question sets. Retake the same form to measure improvement without the set changing.</p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            {(['A', 'B', 'C'] as ExamForm[]).map((form) => <button key={form} onClick={() => startExam('full', form)} className="rounded-xl border-2 border-slate-200 p-4 text-left transition hover:border-cyan-400"><span className="font-black text-navy-950">Exam Form {form}</span><span className="mt-1 block text-xs font-semibold text-slate-500">100 questions · 120 minutes</span></button>)}
+          </div>
         </div>
         <div className="card mt-6 p-6">
           <h2 className="text-xl font-black text-navy-950">Before you begin</h2>
@@ -243,11 +289,11 @@ export function Exam() {
           </p>
           <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
             <button
-              onClick={() => startExam(mode)}
+              onClick={() => startExam(mode, formId)}
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-navy-950 px-5 py-3 text-sm font-black text-white"
             >
               <RotateCcw size={17} />
-              New {EXAM_CONFIG[mode].label}
+              {formId ? `Retry Form ${formId}` : `New ${EXAM_CONFIG[mode].label}`}
             </button>
             <Link
               to="/exam/history"
@@ -294,6 +340,13 @@ export function Exam() {
                     <p className="mt-3 rounded-xl bg-slate-50 p-4 text-sm leading-6 text-slate-600">
                       {question.explanation}
                     </p>
+                    {question.choiceExplanations?.some(Boolean) && (
+                      <div className="mt-3 rounded-xl border border-slate-200 p-4 text-sm">
+                        <p className="font-black text-navy-950">Why each option is right or wrong</p>
+                        <ul className="mt-2 space-y-2 text-slate-600">{question.choices.map((choice, choiceIndex) => question.choiceExplanations?.[choiceIndex] && <li key={choice}><strong>{String.fromCharCode(65 + choiceIndex)}.</strong> {question.choiceExplanations[choiceIndex]}</li>)}</ul>
+                      </div>
+                    )}
+                    {question.references?.length ? <div className="mt-3 text-sm"><p className="font-black text-navy-950">Technical references</p><ul className="mt-2 space-y-1">{question.references.map((reference) => <li key={reference.url}><a href={reference.url} target="_blank" rel="noreferrer" className="font-bold text-cyan-700 underline decoration-cyan-200 underline-offset-2">{reference.title}</a></li>)}</ul></div> : null}
                   </div>
                 </div>
               </article>
@@ -523,6 +576,7 @@ function DomainBreakdown({
 
 export function ExamHistory() {
   const { examAttempts, bestExamScore } = useProgress();
+  const readiness = calculateExamReadiness(examAttempts);
   return (
     <section className="mx-auto max-w-4xl">
       <Link
@@ -553,6 +607,11 @@ export function ExamHistory() {
           label="Completed exams"
         />
       </div>
+      <section className="card mt-6 p-6">
+        <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="eyebrow">Blueprint-weighted readiness</p><h2 className="mt-1 text-2xl font-black text-navy-950">{readiness.score}% · {readiness.level}</h2></div><span className="rounded-full bg-cyan-50 px-3 py-1 text-xs font-black text-cyan-800">Evidence {readiness.evidence}%</span></div>
+        <p className="mt-2 text-sm leading-6 text-slate-600">Based on your five most recent mock exams, adjusted to the official domain weights. More completed questions increase confidence in the estimate.</p>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2">{readiness.domains.map((domain) => <div key={domain.id}><div className="flex justify-between gap-3 text-xs font-bold"><span className="text-navy-950">{domain.title}</span><span className="text-slate-500">{domain.accuracy}% · {domain.answered} seen</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100"><div className={`h-full rounded-full ${domain.accuracy >= 80 ? 'bg-emerald-500' : 'bg-amber-400'}`} style={{width: `${domain.accuracy}%`}} /></div></div>)}</div>
+      </section>
       <div className="mt-6 space-y-3">
         {examAttempts.length ? (
           examAttempts.map((attempt, index) => {
@@ -569,7 +628,7 @@ export function ExamHistory() {
                 </span>
                 <div className="flex-1">
                   <p className="font-black text-navy-950">
-                    {attempt.mode === 'full' || attempt.total === 100 ? 'Full Simulation' : 'Quick Mock'} · {attempt.score} of {attempt.total} correct
+                    {attempt.formId ? `Exam Form ${attempt.formId}` : attempt.mode === 'full' || attempt.total === 100 ? 'Full Simulation' : 'Quick Mock'} · {attempt.score} of {attempt.total} correct
                   </p>
                   <p className="mt-1 text-xs font-semibold text-slate-500">
                     {new Date(attempt.completedAt).toLocaleString()} ·{" "}
