@@ -1,4 +1,5 @@
 import { supplementalQuestions } from './supplementalQuestions'
+import { expandedQuestions } from './expandedQuestions'
 
 export type PracticeQuestion = {
   id: string
@@ -235,5 +236,8 @@ for (const [topicId, questions] of Object.entries(multipleAnswerQuestions)) {
 }
 
 for (const [topicId, questions] of Object.entries(supplementalQuestions)) {
+  questionsByTopic[topicId] = [...(questionsByTopic[topicId] ?? []), ...questions]
+}
+for (const [topicId, questions] of Object.entries(expandedQuestions)) {
   questionsByTopic[topicId] = [...(questionsByTopic[topicId] ?? []), ...questions]
 }

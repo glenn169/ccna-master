@@ -49,6 +49,21 @@ export interface ExamAttempt {
   completedAt: string
 }
 
+export interface CustomQuizAttempt {
+  id?: number
+  questionIds: string[]
+  selectedAnswers: Record<string, number[]>
+  score: number
+  total: number
+  mode: 'custom' | 'weak' | 'incorrect' | 'bookmarked'
+  completedAt: string
+}
+
+export interface QuestionBookmark {
+  questionId: string
+  createdAt: string
+}
+
 class CcnaMasterDatabase extends Dexie {
   progress!: EntityTable<ProgressSummary, 'id'>
   moduleProgress!: EntityTable<ModuleProgress, 'moduleId'>
@@ -56,6 +71,8 @@ class CcnaMasterDatabase extends Dexie {
   quizAttempts!: EntityTable<QuizAttempt, 'id'>
   labProgress!: EntityTable<LabProgress, 'labId'>
   examAttempts!: EntityTable<ExamAttempt, 'id'>
+  customQuizAttempts!: EntityTable<CustomQuizAttempt, 'id'>
+  questionBookmarks!: EntityTable<QuestionBookmark, 'questionId'>
 
   constructor() {
     super('ccna-master')
@@ -64,6 +81,7 @@ class CcnaMasterDatabase extends Dexie {
     this.version(3).stores({ progress: 'id', moduleProgress: 'moduleId, updatedAt', lessonProgress: 'lessonId, moduleId, completedAt', quizAttempts: '++id, topicId, moduleId, completedAt' })
     this.version(4).stores({ progress: 'id', moduleProgress: 'moduleId, updatedAt', lessonProgress: 'lessonId, moduleId, completedAt', quizAttempts: '++id, topicId, moduleId, completedAt', labProgress: 'labId, domainId, completedAt' })
     this.version(5).stores({ progress: 'id', moduleProgress: 'moduleId, updatedAt', lessonProgress: 'lessonId, moduleId, completedAt', quizAttempts: '++id, topicId, moduleId, completedAt', labProgress: 'labId, domainId, completedAt', examAttempts: '++id, completedAt, score' })
+    this.version(6).stores({ progress: 'id', moduleProgress: 'moduleId, updatedAt', lessonProgress: 'lessonId, moduleId, completedAt', quizAttempts: '++id, topicId, moduleId, completedAt', labProgress: 'labId, domainId, completedAt', examAttempts: '++id, completedAt, score', customQuizAttempts: '++id, completedAt, mode', questionBookmarks: 'questionId, createdAt' })
   }
 }
 

@@ -11,6 +11,8 @@ export function useProgress() {
   const quizAttempts = useLiveQuery(() => db.quizAttempts.toArray(), []) ?? []
   const completedLabs = useLiveQuery(() => db.labProgress.toArray(), []) ?? []
   const examAttempts = useLiveQuery(() => db.examAttempts.orderBy('completedAt').reverse().toArray(), []) ?? []
+  const customQuizAttempts = useLiveQuery(() => db.customQuizAttempts.orderBy('completedAt').reverse().toArray(), []) ?? []
+  const questionBookmarks = useLiveQuery(() => db.questionBookmarks.toArray(), []) ?? []
   const modulePercent = (moduleId: string) => {
     const availableTopics = modules.find((item) => item.id === moduleId)?.lessons.filter((topic) => questionsByTopic[topic.id]?.length) ?? []
     if (!availableTopics.length) return 0
@@ -22,7 +24,26 @@ export function useProgress() {
   const topicAttempts = (topicId: string) => quizAttempts.filter((item) => item.topicId === topicId).length
   const isLabComplete = (labId: string) => completedLabs.some((item) => item.labId === labId)
   const bestExamScore = examAttempts.reduce((best, attempt) => Math.max(best, Math.round((attempt.score / attempt.total) * 100)), 0)
-  return { summary, modulePercent, isLessonComplete, quizAttempts, bestTopicScore, topicAttempts, isLabComplete, completedLabs, completedLabCount: completedLabs.length, examAttempts, bestExamScore }
+  return { summary, modulePercent, isLessonComplete, quizAttempts, bestTopicScore, topicAttempts, isLabComplete, completedLabs, completedLabCount: completedLabs.length, examAttempts, bestExamScore, customQuizAttempts, questionBookmarks }
+}
+
+export async function toggleQuestionBookmark(questionId: string) {
+  const existing = await db.questionBookmarks.get(questionId)
+  if (existing) await db.questionBookmarks.delete(questionId)
+  else await db.questionBookmarks.put({ questionId, createdAt: new Date().toISOString() })
+  void syncCurrentUserProgress()
+}
+
+export async function recordCustomQuizAttempt(questionIds: string[], selectedAnswers: Record<string, number[]>, score: number, mode: 'custom' | 'weak' | 'incorrect' | 'bookmarked') {
+  await db.transaction('rw', db.customQuizAttempts, db.progress, async () => {
+    const summary = { ...emptyProgress, ...(await db.progress.get('current')) }
+    const today = localDate()
+    const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1)
+    const nextStreak = summary.lastStudyDate === today ? summary.streakDays : summary.lastStudyDate === localDate(yesterday) ? summary.streakDays + 1 : 1
+    await db.customQuizAttempts.add({ questionIds, selectedAnswers, score, total: questionIds.length, mode, completedAt: new Date().toISOString() })
+    await db.progress.put({ ...summary, streakDays: nextStreak, studyMinutes: summary.studyMinutes + Math.max(1, Math.ceil(questionIds.length / 2)), questionsAnswered: summary.questionsAnswered + questionIds.length, correctAnswers: summary.correctAnswers + score, lastStudyDate: today })
+  })
+  void syncCurrentUserProgress()
 }
 
 export async function recordExamAttempt(questionIds: string[], selectedAnswers: Record<string, number | number[]>, score: number, durationSeconds: number, mode: 'quick' | 'full' = 'quick') {

@@ -1,4 +1,4 @@
-import { BarChart3, ClipboardCheck, Cloud, CloudOff, FlaskConical, GraduationCap, Home, Menu, Network, User, X } from 'lucide-react'
+import { BarChart3, ClipboardCheck, Cloud, CloudOff, FlaskConical, GraduationCap, Home, Menu, Network, Sparkles, User, X } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useProgress } from '../hooks/useProgress'
@@ -6,6 +6,7 @@ import { useAuth } from '../context/auth'
 
 const links = [
   { to: '/', label: 'Dashboard', icon: Home }, { to: '/practice', label: 'Practice', icon: GraduationCap },
+  { to: '/practice/study', label: 'Study Mode', icon: Sparkles },
   { to: '/labs', label: 'Labs', icon: FlaskConical },
   { to: '/exam', label: 'Exam', icon: ClipboardCheck },
   { to: '/progress', label: 'Progress', icon: BarChart3 },
