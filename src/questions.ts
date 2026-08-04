@@ -3,6 +3,7 @@ import { expandedQuestions } from './expandedQuestions'
 import { masteryQuestions } from './masteryQuestions'
 import { importedQuestions } from './importedQuestions'
 import { balancedDomainQuestions } from './balancedDomainQuestions'
+import { layer2ScenarioQuestions } from './layer2ScenarioQuestions'
 
 export type PracticeQuestion = {
   id: string
@@ -277,5 +278,8 @@ for (const [topicId, questions] of Object.entries(importedQuestions)) {
   questionsByTopic[topicId] = [...(questionsByTopic[topicId] ?? []), ...questions]
 }
 for (const [topicId, questions] of Object.entries(balancedDomainQuestions)) {
+  questionsByTopic[topicId] = [...(questionsByTopic[topicId] ?? []), ...questions]
+}
+for (const [topicId, questions] of Object.entries(layer2ScenarioQuestions)) {
   questionsByTopic[topicId] = [...(questionsByTopic[topicId] ?? []), ...questions]
 }
