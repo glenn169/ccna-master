@@ -15,6 +15,7 @@ export function useProgress() {
   const customQuizAttempts = useLiveQuery(() => db.customQuizAttempts.orderBy('completedAt').reverse().toArray(), []) ?? []
   const questionBookmarks = useLiveQuery(() => db.questionBookmarks.toArray(), []) ?? []
   const savedPreferences = useLiveQuery(() => db.studyPreferences.get('current'), [])
+  const labAssessmentAttempts = useLiveQuery(() => db.labAssessmentAttempts.orderBy('completedAt').reverse().toArray(), []) ?? []
   const studyPreferences = { ...defaultStudyPreferences, ...savedPreferences }
   const modulePercent = (moduleId: string) => {
     const availableTopics = modules.find((item) => item.id === moduleId)?.lessons.filter((topic) => questionsByTopic[topic.id]?.length) ?? []
@@ -28,7 +29,13 @@ export function useProgress() {
   const isLabComplete = (labId: string) => completedLabs.some((item) => item.labId === labId)
   const labStepIndexes = (labId: string) => labProgress.find((item) => item.labId === labId)?.completedStepIndexes ?? []
   const bestExamScore = examAttempts.reduce((best, attempt) => Math.max(best, Math.round((attempt.score / attempt.total) * 100)), 0)
-  return { summary, modulePercent, isLessonComplete, quizAttempts, bestTopicScore, topicAttempts, isLabComplete, labStepIndexes, completedLabs, completedLabCount: completedLabs.length, examAttempts, bestExamScore, customQuizAttempts, questionBookmarks, studyPreferences }
+  const bestLabAssessmentScore = (labId: string) => labAssessmentAttempts.filter((item) => item.labId === labId).reduce((best, item) => Math.max(best, Math.round(item.score / item.total * 100)), 0)
+  return { summary, modulePercent, isLessonComplete, quizAttempts, bestTopicScore, topicAttempts, isLabComplete, labStepIndexes, completedLabs, completedLabCount: completedLabs.length, examAttempts, bestExamScore, customQuizAttempts, questionBookmarks, studyPreferences, labAssessmentAttempts, bestLabAssessmentScore }
+}
+
+export async function recordLabAssessment(labId: string, domainId: string, score: number, total: number, hintsUsed: number, durationSeconds: number) {
+  await db.labAssessmentAttempts.add({ labId, domainId, score, total, hintsUsed, durationSeconds, completedAt: new Date().toISOString() })
+  void syncCurrentUserProgress()
 }
 
 export async function saveStudyPreferences(changes: Partial<Pick<StudyPreferences, 'dailyGoalMinutes' | 'reminderEnabled' | 'reminderTime'>>) {

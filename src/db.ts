@@ -74,6 +74,17 @@ export interface StudyPreferences {
   updatedAt: string
 }
 
+export interface LabAssessmentAttempt {
+  id?: number
+  labId: string
+  domainId: string
+  score: number
+  total: number
+  hintsUsed: number
+  durationSeconds: number
+  completedAt: string
+}
+
 class CcnaMasterDatabase extends Dexie {
   progress!: EntityTable<ProgressSummary, 'id'>
   moduleProgress!: EntityTable<ModuleProgress, 'moduleId'>
@@ -84,6 +95,7 @@ class CcnaMasterDatabase extends Dexie {
   customQuizAttempts!: EntityTable<CustomQuizAttempt, 'id'>
   questionBookmarks!: EntityTable<QuestionBookmark, 'questionId'>
   studyPreferences!: EntityTable<StudyPreferences, 'id'>
+  labAssessmentAttempts!: EntityTable<LabAssessmentAttempt, 'id'>
 
   constructor() {
     super('ccna-master')
@@ -94,6 +106,7 @@ class CcnaMasterDatabase extends Dexie {
     this.version(5).stores({ progress: 'id', moduleProgress: 'moduleId, updatedAt', lessonProgress: 'lessonId, moduleId, completedAt', quizAttempts: '++id, topicId, moduleId, completedAt', labProgress: 'labId, domainId, completedAt', examAttempts: '++id, completedAt, score' })
     this.version(6).stores({ progress: 'id', moduleProgress: 'moduleId, updatedAt', lessonProgress: 'lessonId, moduleId, completedAt', quizAttempts: '++id, topicId, moduleId, completedAt', labProgress: 'labId, domainId, completedAt', examAttempts: '++id, completedAt, score', customQuizAttempts: '++id, completedAt, mode', questionBookmarks: 'questionId, createdAt' })
     this.version(7).stores({ progress: 'id', moduleProgress: 'moduleId, updatedAt', lessonProgress: 'lessonId, moduleId, completedAt', quizAttempts: '++id, topicId, moduleId, completedAt', labProgress: 'labId, domainId, completedAt', examAttempts: '++id, completedAt, score', customQuizAttempts: '++id, completedAt, mode', questionBookmarks: 'questionId, createdAt', studyPreferences: 'id, updatedAt' })
+    this.version(8).stores({ labAssessmentAttempts: '++id, labId, domainId, completedAt, score' })
   }
 }
 
